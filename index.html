@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Simulador Elétrico Pro - Engine Industrial</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&display=swap');
+
+        :root {
+            --bg-color: #f3f4f6; --surface-color: rgba(255, 255, 255, 0.9); --border-color: #e5e7eb;
+            --text-color: #111827; --text-muted: #6b7280; --primary: #4f46e5; --primary-hover: #4338ca;
+            --danger: #ef4444; --active-bg: #e0e7ff; --active-color: #4f46e5;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05); --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.1); --shadow-floating: 0 8px 32px rgba(0, 0, 0, 0.08);
+            --modal-backdrop: rgba(17, 24, 39, 0.7);
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; overflow: hidden; height: 100vh; display: flex; justify-content: center; align-items: center; overscroll-behavior: none; }
+        canvas#simuladorCanvas { background-color: transparent; width: 100vw; height: 100vh; touch-action: none; cursor: default; }
+        
+        #canvasWrapper { background-color: #fafafa; position: absolute; top:0; left:0; width: 100vw; height: 100vh; z-index: 1; transition: filter 0.5s ease; }
+        #canvasWrapper.blurred { filter: blur(8px) brightness(0.9); }
+
+        .bottom-dock {
+            position: fixed; bottom: 24px; left: 16px; right: 16px; margin: 0 auto; width: max-content; max-width: calc(100vw - 32px); 
+            background: var(--surface-color); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            padding: 12px 20px; border-radius: 24px; display: flex; align-items: center; justify-content: flex-start; gap: 12px; 
+            overflow-x: auto; box-shadow: var(--shadow-floating); border: 1px solid rgba(255, 255, 255, 0.6); z-index: 50;
+            -ms-overflow-style: none; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+        }
+        .bottom-dock::-webkit-scrollbar { display: none; }
+        .bottom-dock > * { flex-shrink: 0; }
+        .divider { width: 1px; height: 32px; background-color: var(--border-color); margin: 0 4px; }
+
+        .btn-fab { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white; border: none; width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); transition: transform 0.2s; }
+        .btn-fab:hover { transform: scale(1.05); } .btn-fab:active { transform: scale(0.95); }
+
+        .tool-btn { background: transparent; color: var(--text-muted); border: none; width: 44px; height: 44px; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; transition: all 0.2s ease; position: relative; }
+        .tool-btn:hover { background: rgba(0,0,0,0.04); color: var(--text-color); }
+        .tool-btn.active { background: var(--active-bg); color: var(--active-color); box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.2); }
+        .tool-btn.danger { color: var(--danger); background: #fef2f2; }
+        .tool-btn.danger:hover { background: #fee2e2; }
+        .tool-btn.admin { color: #10b981; background: #ecfdf5; }
+        .tool-btn.admin:hover { background: #d1fae5; }
+        .tool-btn.action { color: #3b82f6; background: #eff6ff; }
+        .tool-btn.action:hover { background: #dbeafe; }
+        
+        .history-btn { display: none; }
+
+        .tool-btn::after { content: attr(data-tooltip); position: absolute; top: -36px; background: #111827; color: white; font-size: 12px; padding: 4px 10px; border-radius: 6px; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateY(5px); transition: all 0.2s; font-weight: 500; z-index: 100; }
+        .tool-btn:hover::after { opacity: 1; transform: translateY(0); }
+
+        .quick-settings { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.5); padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border-color); }
+        select, input[type="color"], input[type="text"], input[type="number"], input[type="password"] { border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: #fff; color: var(--text-color); font-family: 'Inter'; font-size: 13px; font-weight: 500; outline: none; }
+        input[type="color"] { width: 26px; height: 26px; padding: 0; border-radius: 50%; overflow: hidden; border: none; cursor: pointer;}
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; } input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border-color); border-radius: 50%; }
+
+        input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
+        input[type="password"]::-webkit-contacts-auto-fill-button, input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidden; pointer-events: none; position: absolute; right: 0; }
+
+        .wire-sub-menu { display: none; position: fixed; transform: translateX(-50%); margin-bottom: 12px; background: var(--surface-color); padding: 6px; border-radius: 12px; box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); flex-direction: column; gap: 6px; backdrop-filter: blur(10px); z-index: 100; }
+        .wire-sub-menu.show { display: flex; animation: slideUp 0.2s ease-out forwards; }
+        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+        .dpad-container { position: fixed; right: 24px; bottom: 100px; display: flex; flex-direction: column; z-index: 60; background: rgba(255,255,255,0.7); padding: 16px; border-radius: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.6); box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none; transform: scale(0.9); transition: opacity 0.3s, transform 0.3s; }
+        .dpad-container.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+        .dpad-grid { display: grid; grid-template-columns: 50px 50px 50px; grid-template-rows: 50px 50px 50px; gap: 6px; transition: opacity 0.1s; }
+        .dpad-btn { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px; font-size: 24px; color: var(--text-color); display: flex; justify-content: center; align-items: center; box-shadow: var(--shadow-sm); cursor: pointer; transition: all 0.1s; }
+        .dpad-btn:active { background: var(--active-bg); color: var(--primary); transform: scale(0.95); }
+        .dpad-btn.up { grid-column: 2; grid-row: 1; } .dpad-btn.left { grid-column: 1; grid-row: 2; }
+        .dpad-btn.ok { grid-column: 2; grid-row: 2; background: var(--primary); color: white; border: none; } .dpad-btn.right { grid-column: 3; grid-row: 2; } .dpad-btn.down { grid-column: 2; grid-row: 3; }
+        .dpad-controls-bottom { margin-top: 16px; display: flex; align-items: center; gap: 8px; justify-content: center; transition: opacity 0.1s; }
+        .dpad-controls-bottom input[type=range] { width: 80px; accent-color: var(--primary); }
+        .dpad-controls-bottom span { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; transition: opacity 0.1s; }
+
+        .zoom-dock { position: fixed; right: 24px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 60; }
+        .zoom-btn { background: var(--surface-color); backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: 12px; width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; font-size: 20px; color: var(--text-color); cursor: pointer; box-shadow: var(--shadow-md); transition: all 0.2s; }
+        .zoom-btn:hover { background: #fff; color: var(--primary); transform: scale(1.05); }
+
+        .float-action-menu { position: fixed; display: none; background: var(--surface-color); padding: 6px; border-radius: 12px; box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); z-index: 70; gap: 6px; backdrop-filter: blur(10px); }
+        .float-action-btn { background: transparent; color: var(--text-color); border: none; width: 38px; height: 38px; border-radius: 8px; font-size: 20px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .float-action-btn:hover { background: rgba(0,0,0,0.05); } .float-action-btn.locked { color: var(--danger); background: #fef2f2; }
+
+        #wirePropMenu { display: none; position: absolute; background: rgba(255, 255, 255, 0.95); padding: 16px; border-radius: 16px; box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); z-index: 80; flex-direction: column; min-width: 220px; backdrop-filter: blur(10px); }
+        #wirePropHeader { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); cursor: grab; }
+        .prop-title { font-weight: 600; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .prop-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 500; margin-bottom: 8px;} .prop-row input[type="range"] { width: 100px; accent-color: var(--primary); }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-backdrop); backdrop-filter: blur(8px); z-index: 100; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s ease; }
+        .modal-content { background: #ffffff; border-radius: 20px; width: 90%; max-width: 900px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); transform: scale(0.98); transition: transform 0.3s ease; overflow: hidden; }
+        
+        #authScreen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; opacity: 1; background: #ffffff; z-index: 10000; align-items: center; justify-content: center; }
+        .auth-box { background: #ffffff; border: 1px solid #e5e7eb; box-shadow: 0 15px 50px rgba(0, 0, 0, 0.08); border-radius: 24px; padding: 48px 40px; width: 100%; max-width: 420px; text-align: center; transform: translateY(0); transition: all 0.3s ease; }
+        .auth-title { font-size: 28px; font-weight: 800; color: var(--text-color); margin: 0 0 8px 0; letter-spacing: -0.5px; }
+        .auth-subtitle { font-size: 15px; color: var(--text-muted); margin: 0 0 32px 0; }
+        .auth-input-group { display: flex; align-items: center; background: #f9fafb; border: 2px solid #f3f4f6; border-radius: 14px; padding: 0 16px; margin-bottom: 20px; transition: all 0.2s; position: relative; }
+        .auth-input-group:focus-within { border-color: var(--primary); background: #ffffff; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+        .auth-input-group i.left-icon { color: #9ca3af; font-size: 22px; margin-right: 12px; flex-shrink: 0; }
+        .auth-input-group i.right-icon { color: #9ca3af; font-size: 22px; margin-left: 12px; flex-shrink: 0; cursor: pointer; transition: color 0.2s; }
+        .auth-input-group i.right-icon:hover { color: var(--text-color); }
+        .auth-input { width: 100%; padding: 18px 0; border: none; background: transparent; font-size: 16px; color: var(--text-color); font-weight: 500; outline: none; }
+        .auth-btn { width: 100%; padding: 18px; border-radius: 14px; background: var(--primary); color: white; font-size: 16px; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); margin-top: 8px; letter-spacing: 0.5px; }
+        .auth-btn:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3); }
+        .auth-switch { margin-top: 24px; font-size: 15px; color: var(--text-muted); }
+        .auth-switch a { color: var(--primary); font-weight: 600; cursor: pointer; text-decoration: none; transition: color 0.2s; }
+        .auth-switch a:hover { color: var(--primary-hover); text-decoration: underline; }
+
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        .data-table th, .data-table td { padding: 14px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .data-table th { background: #f9fafb; font-weight: 600; color: var(--text-muted); text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; position: sticky; top: 0;}
+        .data-table tr:hover { background: rgba(0,0,0,0.02); }
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .status-badge.approved { background: #d1fae5; color: #065f46; }
+        .status-badge.pending { background: #fef3c7; color: #92400e; }
+        .status-badge.blocked { background: #fee2e2; color: #991b1b; }
+        .action-btn { background: transparent; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); transition: color 0.2s; padding: 4px; }
+        .action-btn:hover { color: var(--text-color); }
+        .action-btn.approve:hover { color: #10b981; }
+        .action-btn.revoke:hover { color: #f59e0b; }
+        .action-btn.delete:hover { color: var(--danger); }
+        .action-btn.key:hover { color: var(--primary); }
+        .action-btn.load:hover { color: var(--primary); }
+
+        .modal-header { padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 16px; align-items: center; justify-content: space-between; background: #f9fafb; flex-wrap: wrap;}
+        .modal-title { margin: 0; color: var(--text-color); font-size: 20px; font-weight: 600; flex-shrink: 0; }
+        .search-bar { flex: 1; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-color); background: #fff; color: var(--text-color); font-size: 14px; outline: none; transition: all 0.2s; }
+        .search-bar:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+        
+        .catalog-container { overflow-y: auto; flex: 1; background: #fafafa; padding: 24px; min-height: 200px; }
+        .category-group { margin-bottom: 32px; }
+        .category-title { font-size: 16px; font-weight: 700; color: var(--text-muted); margin-bottom: 16px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; }
+        .component-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; }
+        .comp-btn { position: relative; background: #fff; padding: 16px 12px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; text-align: center; font-size: 12px; font-weight: 600; color: #374151; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); cursor: pointer; transition: all 0.2s; }
+        .comp-btn:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--primary); color: var(--primary); }
+        .comp-btn img { max-width: 80px; max-height: 80px; margin-bottom: 12px; pointer-events: none; }
+        
+        .del-catalog-btn { position: absolute; top: -8px; right: -8px; background: var(--danger); color: white; border-radius: 50%; width: 26px; height: 26px; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.2s; font-size: 14px; }
+        .del-catalog-btn:hover { transform: scale(1.1); background: #dc2626; }
+
+        .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; background: #fff; gap: 10px;}
+        .btn-close { background: var(--bg-color); border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; color: var(--text-color); transition: background 0.2s; }
+        .btn-close:hover { background: #e5e7eb; }
+        .btn-confirm { background: var(--primary); color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-confirm:hover { background: var(--primary-hover); }
+
+        #modalTextPrompt .modal-content, #modalConfirmClear .modal-content { max-width: 420px; }
+        .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+        .form-row { display: flex; gap: 10px; align-items: center; }
+
+        #modalExport .modal-content { max-width: 480px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.5); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .export-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 10px;}
+        .export-btn { background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.4)); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.8); border-radius: 16px; padding: 24px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.3s ease; color: var(--text-color); font-weight: 700; font-size: 16px; }
+        .export-btn:hover { transform: translateY(-5px); box-shadow: 0 12px 40px rgba(79, 70, 229, 0.15); border-color: var(--primary); color: var(--primary); }
+
+        #modalCreator .modal-content { max-width: 600px; }
+        .creator-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;}
+        .creator-area { border: 2px dashed var(--border-color); border-radius: 16px; height: 300px; display: flex; justify-content: center; align-items: center; background: #f9fafb; position: relative; overflow: hidden; cursor: crosshair;}
+        #creatorCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none;}
+        #creatorImage { max-width: 100%; max-height: 100%; object-fit: contain; position: absolute; z-index: 1;}
+        .upload-placeholder { display: flex; flex-direction: column; align-items: center; color: var(--text-muted); z-index: 3; pointer-events: none;}
+        #fileInput { display: none; }
+        .help-text { font-size: 13px; color: var(--text-muted); text-align: center; font-weight: 500;}
+
+        #toastContainer { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 10001; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: #fff; color: var(--text-color); padding: 14px 24px; border-radius: 12px; box-shadow: var(--shadow-lg); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 12px; animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; border: 1px solid var(--border-color); border-left: 5px solid var(--primary); }
+        .toast.erro { border-left-color: var(--danger); }
+        .toast.sucesso { border-left-color: #10b981; }
+        .toast.info { border-left-color: #3b82f6; }
+        @keyframes slideDown { 0% { opacity: 0; transform: translateY(-20px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes fadeOut { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.95); } }
+    </style>
+</head>
+<body>
+
+    <div id="toastContainer"></div>
+
+    <div id="authScreen">
+        <div class="auth-box" id="loginBox">
+            <h2 class="auth-title">Entrar</h2>
+            <p class="auth-subtitle">Acesse o seu simulador de engenharia</p>
+            <div class="auth-input-group">
+                <i class="ph ph-user left-icon"></i>
+                <input type="text" id="loginUser" class="auth-input" placeholder="Usuário" autocomplete="off">
+            </div>
+            <div class="auth-input-group">
+                <i class="ph ph-lock-key left-icon"></i>
+                <input type="password" id="loginPass" class="auth-input" placeholder="Senha" onkeypress="if(event.key==='Enter') fazerLogin()">
+                <i class="ph ph-eye right-icon" onclick="togglePassword('loginPass', this)" title="Mostrar/Ocultar Senha"></i>
+            </div>
+            <button class="auth-btn" onclick="fazerLogin()">Acessar</button>
+            <div class="auth-switch">Não tem uma conta? <a onclick="mudarAuthView('register')">Criar agora</a></div>
+        </div>
+
+        <div class="auth-box" id="registerBox" style="display: none;">
+            <h2 class="auth-title">Criar Conta</h2>
+            <p class="auth-subtitle">Sua conta precisará de aprovação</p>
+            <div class="auth-input-group">
+                <i class="ph ph-user left-icon"></i>
+                <input type="text" id="regUser" class="auth-input" placeholder="Novo Usuário" autocomplete="off">
+            </div>
+            <div class="auth-input-group">
+                <i class="ph ph-lock-key left-icon"></i>
+                <input type="password" id="regPass" class="auth-input" placeholder="Senha">
+                <i class="ph ph-eye right-icon" onclick="togglePassword('regPass', this)" title="Mostrar/Ocultar Senha"></i>
+            </div>
+            <div class="auth-input-group">
+                <i class="ph ph-lock-key left-icon"></i>
+                <input type="password" id="regPassConf" class="auth-input" placeholder="Confirmar Senha" onkeypress="if(event.key==='Enter') fazerRegistro()">
+                <i class="ph ph-eye right-icon" onclick="togglePassword('regPassConf', this)" title="Mostrar/Ocultar Senha"></i>
+            </div>
+            <button class="auth-btn" onclick="fazerRegistro()">Registrar</button>
+            <div class="auth-switch">Já possui uma conta? <a onclick="mudarAuthView('login')">Entrar</a></div>
+        </div>
+    </div>
+
+    <div id="modalAdmin" class="modal-overlay">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Gerenciar Acessos</h2>
+                <div style="color: var(--text-muted); font-size: 14px; font-weight: 600;"><i class="ph ph-shield-check"></i> Modo Desenvolvedor</div>
+            </div>
+            <div class="modal-body" style="padding: 0; max-height: 60vh; overflow-y: auto;">
+                <table class="data-table">
+                    <thead><tr><th>Usuário</th><th>Status</th><th style="text-align: right;">Ações</th></tr></thead>
+                    <tbody id="adminTableBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer"><button class="btn-close" onclick="fecharAdminModal()">Fechar</button></div>
+        </div>
+    </div>
+
+    <div id="modalProjects" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Meus Projetos</h2>
+                <div style="color: var(--text-muted); font-size: 14px; font-weight: 600;"><i class="ph ph-folder-open"></i> Salvos na Nuvem</div>
+            </div>
+            <div class="modal-body" style="padding: 0; max-height: 60vh; overflow-y: auto;">
+                <table class="data-table">
+                    <thead><tr><th>Nome do Projeto</th><th>Data de Criação</th><th style="text-align: right;">Ações</th></tr></thead>
+                    <tbody id="projectsTableBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer"><button class="btn-close" onclick="fecharModalProjetos()">Fechar</button></div>
+        </div>
+    </div>
+
+    <div id="canvasWrapper" class="blurred"><canvas id="simuladorCanvas"></canvas></div>
+
+    <div class="zoom-dock">
+        <button class="zoom-btn" onclick="mudarZoom(0.1)" title="Aumentar Zoom"><i class="ph ph-plus"></i></button>
+        <button class="zoom-btn" onclick="mudarZoom(-0.1)" title="Diminuir Zoom"><i class="ph ph-minus"></i></button>
+    </div>
+
+    <div id="dpadControls" class="dpad-container">
+        <div class="dpad-grid">
+            <button class="dpad-btn up" onclick="dpadMove(0, -1)"><i class="ph ph-caret-up"></i></button>
+            <button class="dpad-btn left" onclick="dpadMove(-1, 0)"><i class="ph ph-caret-left"></i></button>
+            <button class="dpad-btn ok" onclick="dpadConfirm()"><i class="ph ph-check-bold"></i></button>
+            <button class="dpad-btn right" onclick="dpadMove(1, 0)"><i class="ph ph-caret-right"></i></button>
+            <button class="dpad-btn down" onclick="dpadMove(0, 1)"><i class="ph ph-caret-down"></i></button>
+        </div>
+        <div class="dpad-controls-bottom"><span>Opacidade</span><input type="range" id="dpadOp" min="0" max="1" step="0.05" value="0.8" oninput="updateDpadOpacity()"></div>
+    </div>
+
+    <div id="wireSubMenu" class="wire-sub-menu">
+        <button class="tool-btn" onclick="setFerramenta('fio')" data-tooltip="Adicionar Fio"><i class="ph ph-vector-two"></i></button>
+        <button class="tool-btn" onclick="setFerramenta('entortar')" data-tooltip="Modelar Fio"><i class="ph ph-waves"></i></button>
+        <button class="tool-btn" onclick="setFerramenta('alicate')" data-tooltip="Cortar Fio (Alicate)"><i class="ph ph-scissors"></i></button>
+    </div>
+
+    <div id="floatActionMenu" class="float-action-menu">
+        <button id="btnFloatUp" class="float-action-btn" onclick="moverZIndex(1)" title="Trazer para Frente"><i class="ph ph-arrow-up"></i></button>
+        <button id="btnFloatDown" class="float-action-btn" onclick="moverZIndex(-1)" title="Mandar para Trás"><i class="ph ph-arrow-down"></i></button>
+        <button id="btnFloatDuplicate" class="float-action-btn" onclick="duplicarSelecionados()" title="Duplicar"><i class="ph ph-copy"></i></button>
+        <button id="btnFloatGroup" class="float-action-btn" onclick="mesclarSelecionados()" title="Mesclar Itens" style="display:none;"><i class="ph ph-intersect"></i></button>
+        <button id="btnFloatLock" class="float-action-btn" onclick="toggleLockSelected()" title="Travar/Destravar"><i class="ph ph-lock-open"></i></button>
+        <button id="btnFloatEdit" class="float-action-btn" onclick="abrirModalTexto(componentesSelecionados.values().next().value)" style="display:none;" title="Editar Texto"><i class="ph ph-pencil"></i></button>
+    </div>
+
+    <div class="bottom-dock">
+        <button id="btnPainelAdmin" class="tool-btn admin" style="display:none;" onclick="abrirAdminModal()" data-tooltip="Gerenciar Usuários"><i class="ph ph-users-three"></i></button>
+        <div class="divider" id="divAdmin" style="display:none;"></div>
+        <button class="btn-fab" onclick="abrirModal()" title="Catálogo"><i class="ph ph-list-magnifying-glass"></i></button>
+        <div class="divider" id="divHistory" style="display:none"></div>
+        <button id="btnUndo" class="tool-btn history-btn" onclick="desfazer()" data-tooltip="Desfazer Ação"><i class="ph ph-arrow-u-up-left"></i></button>
+        <button id="btnRedo" class="tool-btn history-btn" onclick="refazer()" data-tooltip="Refazer Ação"><i class="ph ph-arrow-u-up-right"></i></button>
+        <div class="divider"></div>
+        <button id="btnMover" class="tool-btn active" onclick="setFerramenta('mover')" data-tooltip="Modo de Seleção Inteligente"><i id="selectModeIcon" class="ph ph-cursor"></i></button>
+        <button id="btnFioMain" class="tool-btn" onclick="toggleWireMenu()" data-tooltip="Ferramentas de Fio"><i class="ph ph-bezier-curve"></i></button>
+        <button id="btnTexto" class="tool-btn" onclick="abrirModalTexto(null)" data-tooltip="Adicionar Texto"><i class="ph ph-text-t"></i></button>
+        <div class="divider"></div>
+        <div class="quick-settings"><input type="color" id="corFio" value="#ef4444" title="Cor padrão do fio"></div>
+        <button id="btnDeleteSelectedToolbar" class="tool-btn danger" style="display:none;" onclick="deletarSelecionados()" data-tooltip="Deletar Selecionado"><i class="ph ph-trash"></i></button>
+        <div class="divider"></div>
+        <button class="tool-btn action" onclick="salvarProjeto()" data-tooltip="Salvar Projeto"><i class="ph ph-floppy-disk"></i></button>
+        <button class="tool-btn action" onclick="abrirModalProjetos()" data-tooltip="Projetos Salvos"><i class="ph ph-folder-open"></i></button>
+        <button class="tool-btn" onclick="abrirExport()" data-tooltip="Exportar Imagem/PDF"><i class="ph ph-download-simple"></i></button>
+        <button class="tool-btn danger" onclick="abrirModalConfirmarLimpeza()" data-tooltip="Limpar Tela"><i class="ph ph-eraser"></i></button>
+        <div class="divider"></div>
+        <button class="tool-btn" onclick="fazerLogout(false)" data-tooltip="Sair"><i class="ph ph-sign-out"></i></button>
+    </div>
+
+    <div id="wirePropMenu">
+        <div id="wirePropHeader"><div class="prop-title">Propriedades do Fio</div><i class="ph ph-dots-six" style="color: var(--text-muted); font-size: 18px;"></i></div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="prop-row"><span>Cor:</span><input type="color" id="wireEditColor" oninput="atualizarFioSelecionado()"></div>
+            <div class="prop-row"><span>Espessura:</span><input type="range" id="wireThick" min="1" max="30" value="3" oninput="atualizarFioSelecionado()"></div>
+            <div class="prop-row"><span>Estilo:</span><select id="wireStyle" onchange="atualizarFioSelecionado()"><option value="curvo">Curvo</option><option value="quadrado">Ortogonal</option></select></div>
+            <div class="prop-row"><span>Camada:</span><select id="wireZ" onchange="atualizarFioSelecionado()"><option value="frente">Sobre tudo</option><option value="fundo">Atrás de tudo</option></select></div>
+        </div>
+    </div>
+
+    <div id="modalAdd" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Catálogo de Elementos</h2>
+                <div style="display:flex; gap: 10px; width: 60%;">
+                    <input type="text" id="searchInput" class="search-bar" placeholder="Buscar componente..." onkeyup="filtrarCatalogo()">
+                    <button id="btnCriarCustom" class="btn-confirm" onclick="abrirCriador()" style="display:none;">+ Criar Custom</button>
+                </div>
+            </div>
+            <div class="catalog-container" id="catalogContainer">
+                <div id="emptyCatalogMsg" style="display:none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); opacity: 0.6;">
+                    <i class="ph ph-archive-box" style="font-size: 64px; margin-bottom: 16px;"></i>
+                    <p style="font-size: 16px; font-weight: 600;">O catálogo está vazio.</p>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn-close" onclick="fecharModal()">Fechar</button></div>
+        </div>
+    </div>
+
+    <div id="modalCreator" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header"><h2 class="modal-title">Novo Componente</h2></div>
+            <div class="creator-body">
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="customCompName" placeholder="Nome (Ex: Inversor WEG)" style="flex: 2;">
+                    <input type="text" id="customCompCategory" list="catList" placeholder="Categoria (Nova ou Existente)" style="flex: 1.5;">
+                    <datalist id="catList"></datalist>
+                </div>
+                <button class="btn-close" onclick="document.getElementById('fileInput').click()" style="width:100%; justify-content:center; gap:8px;">
+                    <i class="ph ph-upload-simple" style="font-size:20px;"></i> 1. Fazer Upload da Foto (Apenas PNG)
+                </button>
+                <input type="file" id="fileInput" accept="image/png" onchange="carregarImagemCustom(event)">
+                <div class="creator-area" id="creatorArea" onclick="adicionarBorneCustom(event)">
+                    <div class="upload-placeholder" id="uploadPlaceholder"><i class="ph ph-image" style="font-size: 48px; margin-bottom: 10px;"></i><p>Área de Preview</p></div>
+                    <img id="creatorImage" style="display:none;">
+                    <canvas id="creatorCanvas"></canvas>
+                </div>
+                <div class="help-text">2. Clique na imagem para definir os conectores (bornes) de fio.</div>
+                <div style="display:flex; justify-content: space-between; align-items:center; background: #e5e7eb; padding: 10px; border-radius: 8px;">
+                    <span id="terminalCount" style="font-size: 14px; font-weight: 600; color: var(--primary);">Terminais marcados: 0</span>
+                    <button class="btn-close" onclick="limparBornesCustom()" style="padding: 6px 12px; font-size:12px; background: #fff;">Desfazer</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-close" onclick="fecharCriador()">Cancelar</button>
+                <button class="btn-confirm" onclick="salvarComponenteCustom()">Salvar e Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalTextPrompt" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header"><h2 class="modal-title" id="textPromptTitle">Texto</h2></div>
+            <div class="modal-body">
+                <div id="textPreviewArea" style="min-height: 90px; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--border-color); border-radius: 12px; background: #fafafa; overflow: hidden; position: relative;">
+                    <div id="textPreviewEl" style="white-space: nowrap; transition: all 0.2s ease;">Preview</div>
+                </div>
+                <div class="form-group" style="margin-top: 10px;"><label>Conteúdo</label><input type="text" id="txtContent" oninput="updateTextPreview()"></div>
+                <div class="form-row">
+                    <div class="form-group" style="flex:2"><label>Fonte</label><select id="txtFont" onchange="updateTextPreview()"><option value="Inter">Inter</option><option value="Arial">Arial</option><option value="Roboto Mono">Roboto Mono</option></select></div>
+                    <div class="form-group" style="flex:1"><label>Tamanho</label><input type="number" id="txtSize" value="16" min="8" max="100" oninput="updateTextPreview()"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex:1;"><label>Texto</label><input type="color" id="txtColor" value="#111827" oninput="updateTextPreview()"></div>
+                    <div class="form-group" style="flex:1;"><label>Fundo</label><input type="color" id="txtBg" value="#ffffff" oninput="updateTextPreview()"></div>
+                    <div class="form-group" style="flex:1; flex-direction:row; padding-top: 15px;"><input type="checkbox" id="txtTransp" checked onchange="updateTextPreview()"> <label style="font-size:11px;">Transp.</label></div>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn-close" onclick="fecharModalTexto()">Cancelar</button><button class="btn-confirm" onclick="salvarModalTexto()">Aplicar</button></div>
+        </div>
+    </div>
+
+    <div id="modalConfirmClear" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-body" style="text-align:center; padding: 40px 24px;">
+                <i class="ph ph-warning-circle" style="font-size: 56px; color: var(--danger); margin-bottom: 16px;"></i>
+                <h3 style="margin:0 0 10px 0; font-size:22px; color: var(--text-color);">Limpar Área de Trabalho?</h3>
+            </div>
+            <div class="modal-footer" style="justify-content: center; gap: 16px;"><button class="btn-close" onclick="document.getElementById('modalConfirmClear').style.display='none'">Cancelar</button><button class="btn-danger-solid" onclick="document.getElementById('modalConfirmClear').style.display='none'; limparSimulador(false);">Sim, limpar</button></div>
+        </div>
+    </div>
+
+    <div id="modalExport" class="modal-overlay">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header" style="border-bottom: none; padding-bottom: 0;"><h2 class="modal-title" style="text-align: center; width: 100%;">Exportar Projeto</h2></div>
+            <div class="modal-body">
+                <div class="export-grid">
+                    <button class="export-btn" onclick="exportarProjeto('png')"><i class="ph ph-image"></i>PNG</button>
+                    <button class="export-btn" onclick="exportarProjeto('jpg')"><i class="ph ph-file-image"></i>JPG</button>
+                    <button class="export-btn" onclick="exportarProjeto('pdf')"><i class="ph ph-file-pdf"></i>PDF</button>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: none; justify-content: center;"><button class="btn-close" style="width:100%; border:none; background:rgba(0,0,0,0.05);" onclick="fecharExport()">Cancelar</button></div>
+        </div>
+    </div>
+
+    <script>
+        let db = null; let isFirebaseOnline = false;
+        try {
+            const firebaseConfig = { apiKey: "AIzaSyAianv3aK19_Qk_wF_NtDgDYUKJCQXwB2A", authDomain: "aplicativoeletrica.firebaseapp.com", databaseURL: "https://aplicativoeletrica-default-rtdb.firebaseio.com", projectId: "aplicativoeletrica", storageBucket: "aplicativoeletrica.firebasestorage.app", messagingSenderId: "714803968526", appId: "1:714803968526:web:d9846b7c66f164637ada5f" };
+            firebase.initializeApp(firebaseConfig); db = firebase.database(); isFirebaseOnline = true;
+        } catch (error) { console.warn("Erro ao iniciar Firebase. Usando armazenamento local."); isFirebaseOnline = false; }
+
+        let usersDB = {}; let CATALOGO = {}; let DB_CUSTOM = {}; let myProjectsDB = {};
+
+        function initData() {
+            if (isFirebaseOnline) {
+                db.ref('sim_users').on('value', (snapshot) => {
+                    if (snapshot.exists()) { usersDB = snapshot.val(); } else { usersDB = { 'DESENVOLVEDOR': { pass: '1709', role: 'admin', status: 'approved' } }; db.ref('sim_users').set(usersDB); }
+                    if(document.getElementById('modalAdmin').style.display === 'flex') renderAdminTable();
+                }, (error) => { fallbackLocalUsers(); });
+
+                db.ref('sim_custom_components').on('value', (snapshot) => {
+                    if(snapshot.exists()) { const data = snapshot.val(); DB_CUSTOM = data.components || {}; CATALOGO = data.catalogo || {}; } else { DB_CUSTOM = {}; CATALOGO = {}; }
+                    if(document.getElementById('modalAdd').style.display === 'flex') renderizarCatalogo(document.getElementById('searchInput').value);
+                }, (error) => { fallbackLocalCatalog(); });
+            } else { fallbackLocalUsers(); fallbackLocalCatalog(); }
+        }
+
+        function fallbackLocalUsers() { usersDB = JSON.parse(localStorage.getItem('sim_users')) || { 'DESENVOLVEDOR': { pass: '1709', role: 'admin', status: 'approved' } }; localStorage.setItem('sim_users', JSON.stringify(usersDB)); }
+        function fallbackLocalCatalog() { let localCat = JSON.parse(localStorage.getItem('sim_custom_components')) || { components: {}, catalogo: {} }; DB_CUSTOM = localCat.components; CATALOGO = localCat.catalogo; if(document.getElementById('modalAdd').style.display === 'flex') renderizarCatalogo(document.getElementById('searchInput').value); }
+        function saveDBUsers(newDb) { usersDB = newDb; try { if(isFirebaseOnline) db.ref('sim_users').set(newDb); } catch(e){} localStorage.setItem('sim_users', JSON.stringify(newDb)); }
+        function saveCustomComponents() { try { if(isFirebaseOnline) db.ref('sim_custom_components').set({ components: DB_CUSTOM, catalogo: CATALOGO }); } catch(e){} localStorage.setItem('sim_custom_components', JSON.stringify({ components: DB_CUSTOM, catalogo: CATALOGO })); }
+
+        function mostrarAviso(mensagem, tipo = 'info') { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = `toast ${tipo}`; let icon = 'ph-info'; if(tipo === 'erro') icon = 'ph-warning-circle'; if(tipo === 'sucesso') icon = 'ph-check-circle'; toast.innerHTML = `<i class="ph ${icon}" style="font-size: 20px;"></i> <span>${mensagem}</span>`; container.appendChild(toast); setTimeout(() => { toast.style.animation = 'fadeOut 0.3s forwards'; setTimeout(() => toast.remove(), 300); }, 3000); }
+
+        let currentActiveUser = null;
+        let sessionTimeout = 30 * 60 * 1000; 
+        let lastActivityUpdate = 0;
+
+        function checkSession() {
+            let sessionStr = localStorage.getItem('sim_session');
+            if (sessionStr) {
+                let session = JSON.parse(sessionStr);
+                if (Date.now() - session.lastActivity < sessionTimeout) {
+                    currentActiveUser = session.user;
+                    updateActivity();
+                    document.getElementById('authScreen').style.display = 'none';
+                    document.getElementById('canvasWrapper').classList.remove('blurred');
+                    aplicarPermissoes();
+                    let autosave = localStorage.getItem('sim_autosave');
+                    if (autosave) { try { carregarEstado(autosave); } catch(e){} }
+                } else {
+                    fazerLogout(true);
+                }
+            }
+        }
+
+        function updateActivity() { if (currentActiveUser) { localStorage.setItem('sim_session', JSON.stringify({ user: currentActiveUser, lastActivity: Date.now() })); } }
+
+        ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
+            window.addEventListener(evt, () => {
+                let now = Date.now();
+                if (now - lastActivityUpdate > 5000 && currentActiveUser) { updateActivity(); lastActivityUpdate = now; }
+            }, {passive: true});
+        });
+
+        setInterval(() => {
+            if (currentActiveUser) {
+                let sessionStr = localStorage.getItem('sim_session');
+                if (sessionStr) {
+                    let session = JSON.parse(sessionStr);
+                    if (Date.now() - session.lastActivity >= sessionTimeout) { fazerLogout(true); mostrarAviso('Sessão expirada por inatividade.', 'info'); }
+                }
+            }
+        }, 60000);
+
+        function mudarAuthView(view) { document.getElementById('loginBox').style.display = view === 'login' ? 'block' : 'none'; document.getElementById('registerBox').style.display = view === 'register' ? 'block' : 'none'; document.getElementById('loginUser').value = ''; document.getElementById('loginPass').value = ''; document.getElementById('regUser').value = ''; document.getElementById('regPass').value = ''; document.getElementById('regPassConf').value = ''; }
+        function togglePassword(inputId, iconEl) { const input = document.getElementById(inputId); if (input.type === 'password') { input.type = 'text'; iconEl.classList.remove('ph-eye'); iconEl.classList.add('ph-eye-slash'); } else { input.type = 'password'; iconEl.classList.remove('ph-eye-slash'); iconEl.classList.add('ph-eye'); } }
+        
+        function fazerLogin() {
+            const user = document.getElementById('loginUser').value.trim(); const pass = document.getElementById('loginPass').value;
+            if (!user || !pass) { mostrarAviso('Preencha todos os campos.', 'erro'); return; }
+            if (usersDB[user] && usersDB[user].pass === pass) {
+                if (usersDB[user].status === 'pending') { mostrarAviso('Sua conta ainda está aguardando aprovação.', 'erro'); } else if (usersDB[user].status === 'blocked') { mostrarAviso('Sua conta foi bloqueada.', 'erro'); } else { currentActiveUser = usersDB[user]; currentActiveUser.username = user; updateActivity(); entrarNoApp(); }
+            } else { mostrarAviso('Usuário ou senha incorretos.', 'erro'); }
+        }
+
+        function fazerRegistro() {
+            const user = document.getElementById('regUser').value.trim(); const pass = document.getElementById('regPass').value; const conf = document.getElementById('regPassConf').value;
+            if (!user || !pass || !conf) { mostrarAviso('Preencha todos os campos.', 'erro'); return; }
+            if (pass !== conf) { mostrarAviso('As senhas não coincidem.', 'erro'); return; }
+            if (usersDB[user]) { mostrarAviso('Este nome de usuário já existe.', 'erro'); return; }
+            usersDB[user] = { pass: pass, role: 'user', status: 'pending' }; saveDBUsers(usersDB); mostrarAviso('Conta criada! Aguarde aprovação do Desenvolvedor para entrar.', 'sucesso'); mudarAuthView('login');
+        }
+
+        function entrarNoApp() {
+            document.getElementById('authScreen').style.opacity = '0'; document.getElementById('canvasWrapper').classList.remove('blurred'); setTimeout(() => document.getElementById('authScreen').style.display = 'none', 300); mostrarAviso(`Bem-vindo, ${currentActiveUser.username}!`, 'sucesso');
+            aplicarPermissoes();
+            let autosave = localStorage.getItem('sim_autosave');
+            if (autosave) { try { carregarEstado(autosave); } catch(e){} }
+        }
+
+        function aplicarPermissoes() {
+            if (currentActiveUser && currentActiveUser.role === 'admin') { document.getElementById('btnCriarCustom').style.display = 'block'; document.getElementById('btnPainelAdmin').style.display = 'flex'; document.getElementById('divAdmin').style.display = 'block'; } else { document.getElementById('btnCriarCustom').style.display = 'none'; document.getElementById('btnPainelAdmin').style.display = 'none'; document.getElementById('divAdmin').style.display = 'none'; }
+            if(isFirebaseOnline && currentActiveUser) { db.ref('sim_projects/' + currentActiveUser.username).on('value', snap => { myProjectsDB = snap.exists() ? snap.val() : {}; if(document.getElementById('modalProjects').style.display === 'flex') renderProjectsTable(); }, err => fallbackLocalProjects()); } else { fallbackLocalProjects(); }
+        }
+
+        function fallbackLocalProjects() { if(!currentActiveUser) return; let allProj = JSON.parse(localStorage.getItem('sim_projects_local')) || {}; myProjectsDB = allProj[currentActiveUser.username] || {}; if(document.getElementById('modalProjects').style.display === 'flex') renderProjectsTable(); }
+        function fazerLogout(silent = false) { currentActiveUser = null; localStorage.removeItem('sim_session'); document.getElementById('authScreen').style.display = 'flex'; document.getElementById('canvasWrapper').classList.add('blurred'); setTimeout(() => document.getElementById('authScreen').style.opacity = '1', 10); mudarAuthView('login'); if(!silent) mostrarAviso('Sessão encerrada.', 'info'); }
+        
+        function abrirAdminModal() { renderAdminTable(); document.getElementById('modalAdmin').style.display = 'flex'; setTimeout(() => { document.getElementById('modalAdmin').style.opacity = '1'; }, 10); }
+        function fecharAdminModal() { document.getElementById('modalAdmin').style.opacity = '0'; setTimeout(() => document.getElementById('modalAdmin').style.display = 'none', 300); }
+
+        function renderAdminTable() {
+            const tbody = document.getElementById('adminTableBody'); tbody.innerHTML = '';
+            for (const [username, data] of Object.entries(usersDB)) {
+                if (username === 'DESENVOLVEDOR') continue; 
+                let statusBadge = ''; if (data.status === 'approved') statusBadge = '<span class="status-badge approved">Permitido</span>'; if (data.status === 'pending') statusBadge = '<span class="status-badge pending">Aguardando</span>'; if (data.status === 'blocked') statusBadge = '<span class="status-badge blocked">Bloqueado</span>';
+                let actionHtml = ''; if (data.status !== 'approved') actionHtml += `<button class="action-btn approve" onclick="alterarStatus('${username}', 'approved')" title="Permitir Acesso"><i class="ph ph-check-circle"></i></button>`; if (data.status !== 'blocked') actionHtml += `<button class="action-btn revoke" onclick="alterarStatus('${username}', 'blocked')" title="Remover Permissão"><i class="ph ph-prohibit"></i></button>`; actionHtml += `<button class="action-btn key" onclick="mudarSenhaUser('${username}')" title="Mudar Senha"><i class="ph ph-key"></i></button><button class="action-btn delete" onclick="excluirUser('${username}')" title="Excluir Usuário"><i class="ph ph-trash"></i></button>`;
+                tbody.innerHTML += `<tr><td style="font-weight: 600;">${username}</td><td>${statusBadge}</td><td style="text-align: right; white-space: nowrap;">${actionHtml}</td></tr>`;
+            }
+            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum usuário registrado além do DESENVOLVEDOR.</td></tr>';
+        }
+
+        function alterarStatus(user, newStatus) { if(usersDB[user]) { usersDB[user].status = newStatus; saveDBUsers(usersDB); renderAdminTable(); mostrarAviso('Status alterado com sucesso.', 'sucesso'); } }
+        function mudarSenhaUser(user) { const novaSenha = prompt(`Digite a nova senha para o usuário "${user}":`); if (novaSenha && novaSenha.trim() !== "") { if(usersDB[user]) { usersDB[user].pass = novaSenha.trim(); saveDBUsers(usersDB); mostrarAviso(`Senha de ${user} alterada.`, 'sucesso'); } } }
+        function excluirUser(user) { if(confirm(`Tem certeza que deseja EXCLUIR permanentemente o usuário "${user}"?`)) { if(usersDB[user]) { delete usersDB[user]; saveDBUsers(usersDB); renderAdminTable(); mostrarAviso('Usuário excluído.', 'info'); } } }
+
+        function salvarProjeto() { const nome = prompt("Digite o nome para salvar o projeto:"); if (!nome || nome.trim() === '') return; const projId = 'proj_' + Date.now(); const payload = { nome: nome.trim(), dataStr: JSON.stringify(getEstadoAtual()), timestamp: Date.now() }; if (isFirebaseOnline) { try { db.ref(`sim_projects/${currentActiveUser.username}/${projId}`).set(payload).then(() => mostrarAviso("Projeto salvo na nuvem!", "sucesso")).catch(e => { salvarProjetoLocalFallback(projId, payload); }); } catch(e) { salvarProjetoLocalFallback(projId, payload); } } else { salvarProjetoLocalFallback(projId, payload); } }
+        function salvarProjetoLocalFallback(projId, payload) { let allProj = JSON.parse(localStorage.getItem('sim_projects_local')) || {}; if(!allProj[currentActiveUser.username]) allProj[currentActiveUser.username] = {}; allProj[currentActiveUser.username][projId] = payload; localStorage.setItem('sim_projects_local', JSON.stringify(allProj)); mostrarAviso("Projeto salvo localmente (Modo Offline).", "sucesso"); fallbackLocalProjects(); }
+        function abrirModalProjetos() { renderProjectsTable(); document.getElementById('modalProjects').style.display = 'flex'; setTimeout(() => { document.getElementById('modalProjects').style.opacity = '1'; }, 10); }
+        function fecharModalProjetos() { document.getElementById('modalProjects').style.opacity = '0'; setTimeout(() => document.getElementById('modalProjects').style.display = 'none', 300); }
+        function renderProjectsTable() {
+            const tbody = document.getElementById('projectsTableBody'); tbody.innerHTML = ''; const sortedProjects = Object.entries(myProjectsDB).sort((a, b) => b[1].timestamp - a[1].timestamp);
+            for (const [id, data] of sortedProjects) { let dateStr = new Date(data.timestamp).toLocaleString('pt-BR'); let actionHtml = `<button class="action-btn load" onclick="carregarProjetoId('${id}')" title="Abrir Projeto"><i class="ph ph-folder-open"></i></button><button class="action-btn delete" onclick="excluirProjetoId('${id}')" title="Excluir"><i class="ph ph-trash"></i></button>`; tbody.innerHTML += `<tr><td style="font-weight: 600; color: var(--primary);">${data.nome}</td><td>${dateStr}</td><td style="text-align: right; white-space: nowrap;">${actionHtml}</td></tr>`; }
+            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum projeto salvo encontrado.</td></tr>';
+        }
+        function carregarProjetoId(id) { if(myProjectsDB[id] && myProjectsDB[id].dataStr) { limparSimulador(true); carregarEstado(myProjectsDB[id].dataStr); fecharModalProjetos(); mostrarAviso(`Projeto "${myProjectsDB[id].nome}" carregado!`, "sucesso"); } }
+        function excluirProjetoId(id) { if(confirm("Tem certeza que deseja excluir este projeto?")) { if(isFirebaseOnline) { try { db.ref(`sim_projects/${currentActiveUser.username}/${id}`).remove(); } catch(e) { excluirProjetoLocalFallback(id); } } else { excluirProjetoLocalFallback(id); } } }
+        function excluirProjetoLocalFallback(id) { let allProj = JSON.parse(localStorage.getItem('sim_projects_local')) || {}; if(allProj[currentActiveUser.username] && allProj[currentActiveUser.username][id]) { delete allProj[currentActiveUser.username][id]; localStorage.setItem('sim_projects_local', JSON.stringify(allProj)); fallbackLocalProjects(); } }
+
+        let camera = { x: 0, y: 0, zoom: 1 };
+        function toWorld(scrX, scrY) { return { x: (scrX - camera.x) / camera.zoom, y: (scrY - camera.y) / camera.zoom }; }
+        function toScreen(worldX, worldY) { return { x: worldX * camera.zoom + camera.x, y: worldY * camera.zoom + camera.y }; }
+
+        let textEditTarget = null;
+        
+        function toggleWireMenu() { const menu = document.getElementById('wireSubMenu'); const btn = document.getElementById('btnFioMain'); if (menu.classList.contains('show')) { menu.classList.remove('show'); setTimeout(() => menu.style.display = 'none', 200); } else { const rect = btn.getBoundingClientRect(); menu.style.left = (rect.left + rect.width / 2) + 'px'; menu.style.bottom = (window.innerHeight - rect.top + 10) + 'px'; menu.style.display = 'flex'; menu.classList.add('show'); } }
+        document.addEventListener('pointerdown', (e) => { if(!e.target.closest('.wire-menu-container') && !e.target.closest('#wireSubMenu')) { const menu = document.getElementById('wireSubMenu'); if(menu && menu.classList.contains('show')) { menu.classList.remove('show'); setTimeout(() => menu.style.display = 'none', 200); } } });
+        document.querySelector('.bottom-dock').addEventListener('scroll', () => { const menu = document.getElementById('wireSubMenu'); if(menu && menu.classList.contains('show')) { menu.classList.remove('show'); menu.style.display = 'none'; } });
+
+        function updateDpadOpacity() { const val = parseFloat(document.getElementById('dpadOp').value); const container = document.getElementById('dpadControls'); container.style.backgroundColor = `rgba(255,255,255,${val * 0.7})`; container.style.borderColor = `rgba(255,255,255,${val * 0.6})`; container.style.boxShadow = `0 20px 25px -5px rgba(0,0,0,${val * 0.1})`; if(val < 0.1) { container.style.backdropFilter = 'none'; container.style.webkitBackdropFilter = 'none'; } else { container.style.backdropFilter = `blur(${val * 10}px)`; container.style.webkitBackdropFilter = `blur(${val * 10}px)`; } document.querySelector('.dpad-grid').style.opacity = val; document.querySelector('.dpad-controls-bottom span').style.opacity = Math.max(val, 0.3); }
+
+        const wireMenu = document.getElementById('wirePropMenu'); const wireHeader = document.getElementById('wirePropHeader'); let isDraggingMenu = false, menuStartX, menuStartY, initialMouseX, initialMouseY;
+        wireHeader.addEventListener('pointerdown', (e) => { isDraggingMenu = true; initialMouseX = e.clientX; initialMouseY = e.clientY; menuStartX = wireMenu.offsetLeft; menuStartY = wireMenu.offsetTop; e.preventDefault(); });
+        window.addEventListener('pointermove', (e) => { if(isDraggingMenu) { wireMenu.style.left = (menuStartX + e.clientX - initialMouseX) + 'px'; wireMenu.style.top = (menuStartY + e.clientY - initialMouseY) + 'px'; } });
+        window.addEventListener('pointerup', () => { isDraggingMenu = false; });
+        
+        function updateTextPreview() { let el = document.getElementById('textPreviewEl'); let val = document.getElementById('txtContent').value || 'Preview Visual'; let size = document.getElementById('txtSize').value; let font = document.getElementById('txtFont').value; let color = document.getElementById('txtColor').value; let bg = document.getElementById('txtBg').value; let transp = document.getElementById('txtTransp').checked; el.innerText = val; el.style.fontFamily = font; let renderSize = Math.min(size, 32); el.style.fontSize = renderSize + 'px'; el.style.fontWeight = '600'; el.style.color = color; let previewContainer = document.getElementById('textPreviewArea'); if(transp) { previewContainer.style.background = '#fafafa'; el.style.background = 'transparent'; el.style.padding = '0'; } else { previewContainer.style.background = '#e5e7eb'; el.style.background = bg; el.style.padding = '8px 16px'; el.style.borderRadius = '8px'; } }
+        function abrirModalTexto(comp) { textEditTarget = comp; let elTitle = document.getElementById('textPromptTitle'); let elTxt = document.getElementById('txtContent'); let elSize = document.getElementById('txtSize'); let elFont = document.getElementById('txtFont'); let elColor = document.getElementById('txtColor'); let elBg = document.getElementById('txtBg'); let elTransp = document.getElementById('txtTransp'); if(comp) { elTitle.innerText = "Editar Texto"; elTxt.value = comp.nome; elSize.value = comp.textProp.size; elFont.value = comp.textProp.font; elColor.value = comp.textProp.color; if(comp.textProp.bg === 'transparent') { elTransp.checked = true; elBg.value = '#ffffff'; } else { elTransp.checked = false; elBg.value = comp.textProp.bg; } } else { elTitle.innerText = "Novo Texto"; elTxt.value = ""; elSize.value = 16; elFont.value = "Inter"; elColor.value = "#111827"; elTransp.checked = true; } updateTextPreview(); document.getElementById('modalTextPrompt').style.display = 'flex'; setTimeout(() => { document.getElementById('modalTextPrompt').style.opacity = '1'; document.getElementById('txtContent').focus(); }, 10); }
+        function fecharModalTexto() { document.getElementById('modalTextPrompt').style.opacity = '0'; setTimeout(() => document.getElementById('modalTextPrompt').style.display = 'none', 200); textEditTarget = null; }
+        function salvarModalTexto() { let val = document.getElementById('txtContent').value; if (val && val.trim() !== '') { salvarEstado(); let prop = { size: parseInt(document.getElementById('txtSize').value), font: document.getElementById('txtFont').value, color: document.getElementById('txtColor').value, bg: document.getElementById('txtTransp').checked ? 'transparent' : document.getElementById('txtBg').value }; if(textEditTarget) { textEditTarget.nome = val; textEditTarget.textProp = prop; ctx.font = `600 ${prop.size}px ${prop.font}`; textEditTarget.width = ctx.measureText(val).width + 32; textEditTarget.height = prop.size + 24; } else { let pt = toWorld(canvas.width/2, canvas.height/2); let txt = new Componente(Math.round(pt.x/24)*24, Math.round(pt.y/24)*24, val, true); txt.textProp = prop; ctx.font = `600 ${prop.size}px ${prop.font}`; txt.width = ctx.measureText(val).width + 32; txt.height = prop.size + 24; componentes.push(txt); componentesSelecionados.clear(); componentesSelecionados.add(txt); } atualizarMenuFlutuante(); atualizarTela(); setFerramenta('mover'); } fecharModalTexto(); }
+
+        const canvas = document.getElementById('simuladorCanvas'); const ctx = canvas.getContext('2d');
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; atualizarTela(); } window.addEventListener('resize', resizeCanvas); setTimeout(resizeCanvas, 50);
+        function mudarZoom(delta) { let prevZoom = camera.zoom; camera.zoom = Math.max(0.2, Math.min(4, camera.zoom + delta)); let cx = canvas.width / 2; let cy = canvas.height / 2; camera.x = cx - (cx - camera.x) * (camera.zoom / prevZoom); camera.y = cy - (cy - camera.y) * (camera.zoom / prevZoom); atualizarMenuFlutuante(); atualizarTela(); }
+        canvas.addEventListener('wheel', (e) => { e.preventDefault(); let delta = e.deltaY > 0 ? -0.1 : 0.1; let prevZoom = camera.zoom; camera.zoom = Math.max(0.2, Math.min(4, camera.zoom + delta)); camera.x = e.clientX - (e.clientX - camera.x) * (camera.zoom / prevZoom); camera.y = e.clientY - (e.clientY - camera.y) * (camera.zoom / prevZoom); atualizarMenuFlutuante(); atualizarTela(); }, {passive: false});
+
+        let componentes = []; let fios = []; let historico = []; let historicoRefazer = []; let terminalAtivo = null;
+
+        let autoSaveTimer = null;
+        function triggerAutoSave() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                if (!desenhandoFio && !isPanning && !arrastandoGrupo && !isResizing && currentActiveUser) {
+                    try { localStorage.setItem('sim_autosave', JSON.stringify(getEstadoAtual())); } catch(e){}
+                }
+            }, 1000);
+        }
+
+        function salvarEstado() {
+            try {
+                const estado = getEstadoAtual();
+                historico.push(JSON.stringify(estado)); 
+                if(historico.length > 30) historico.shift(); 
+                historicoRefazer = []; 
+                atualizarBotoesHistorico();
+                triggerAutoSave();
+            } catch(e) { console.warn("Erro ao salvar estado, ignorado por segurança.", e); }
+        }
+
+        function carregarEstado(estadoStr) {
+            const estado = JSON.parse(estadoStr); componentesSelecionados.clear(); fioManipulado = null; terminalAtivo = null; fioAtual = null; desenhandoFio = false; textEditTarget = null;
+            componentes = estado.comps.map(c => { 
+                let comp = new Componente(c.x, c.y, c.nome, c.isTexto, c.isCustom); comp.width = c.width; comp.height = c.height; comp.locked = c.locked; comp.groupId = c.groupId || null;
+                if(c.isTexto) comp.textProp = c.textProp; 
+                if(c.isCustom && DB_CUSTOM[comp.nome]) { comp.terminais = (DB_CUSTOM[comp.nome].terminais || []).map(t => ({ px: t.px, py: t.py, x: t.px * comp.width, y: t.py * comp.height })); } else if(!c.isCustom && comp.gerarTerminais) { comp.gerarTerminais(); } 
+                return comp; 
+            });
+            fios = estado.fs.map(f => { let fio = new Fio(null, null, f.endX, f.endY, f.cor, f.tipoLinha); fio.origem = f.origemIdx >= 0 ? componentes[f.origemIdx] : null; fio.destino = f.destinoIdx >= 0 ? componentes[f.destinoIdx] : null; if (fio.origem && f.tOrigemIdx !== undefined && f.tOrigemIdx >= 0 && fio.origem.terminais) fio.terminalOrigem = fio.origem.terminais[f.tOrigemIdx]; else fio.terminalOrigem = f.termOrigem; if (fio.destino && f.tDestinoIdx !== undefined && f.tDestinoIdx >= 0 && fio.destino.terminais) fio.terminalDestino = fio.destino.terminais[f.tDestinoIdx]; else fio.terminalDestino = f.termDestino; fio.espessura = f.espessura; fio.estilo = f.estilo; fio.z = f.z; fio.cobreExposto = f.cobreExposto; fio.pontos = f.pontos || []; return fio; });
+            
+            let promises = componentes.map(c => new Promise(res => { if(c.isCustom && c.imgObj && !c.imgObj.complete) { c.imgObj.addEventListener('load', res); c.imgObj.addEventListener('error', res); } else res(); }));
+            Promise.all(promises).then(() => { atualizarMenuFlutuante(); atualizarTela(); atualizarBotoesHistorico(); });
+        }
+
+        function desfazer() { if(historico.length === 0) return; historicoRefazer.push(JSON.stringify(getEstadoAtual())); carregarEstado(historico.pop()); }
+        function refazer() { if(historicoRefazer.length === 0) return; historico.push(JSON.stringify(getEstadoAtual())); carregarEstado(historicoRefazer.pop()); }
+        
+        function getEstadoAtual() { 
+            return { 
+                comps: componentes.map(c => ({ x: c.x, y: c.y, width: c.width, height: c.height, nome: c.nome, isCustom: c.isCustom, isTexto: c.isTexto, textProp: c.textProp ? JSON.parse(JSON.stringify(c.textProp)) : null, locked: c.locked, groupId: c.groupId })), 
+                fs: fios.map(f => ({ 
+                    origemIdx: componentes.indexOf(f.origem), destinoIdx: componentes.indexOf(f.destino), termOrigem: f.terminalOrigem, termDestino: f.terminalDestino, 
+                    tOrigemIdx: (f.origem && f.origem.terminais) ? f.origem.terminais.indexOf(f.terminalOrigem) : -1, 
+                    tDestinoIdx: (f.destino && f.destino.terminais) ? f.destino.terminais.indexOf(f.terminalDestino) : -1, 
+                    endX: f.endX, endY: f.endY, cor: f.cor, tipoLinha: f.tipoLinha, espessura: f.espessura, estilo: f.estilo, z: f.z, cobreExposto: f.cobreExposto, pontos: JSON.parse(JSON.stringify(f.pontos || [])) 
+                })) 
+            }; 
+        }
+        
+        function atualizarBotoesHistorico() { document.getElementById('btnUndo').style.display = historico.length > 0 ? 'flex' : 'none'; document.getElementById('btnRedo').style.display = historicoRefazer.length > 0 ? 'flex' : 'none'; document.getElementById('divHistory').style.display = (historico.length > 0 || historicoRefazer.length > 0) ? 'block' : 'none'; }
+
+        let ferramentaAtual = 'mover'; let desenhandoFio = false; let fioAtual = null; let nóArrastado = null; let fioEditando = null; 
+        let componentesSelecionados = new Set(); let arrastandoGrupo = false; let dragOffsetX = 0; let dragOffsetY = 0;
+        let isPanning = false; let panStartX = 0; let panStartY = 0; let fioManipulado = null; let handleArrasteFio = null;
+
+        let isResizing = false; let resizeTarget = null;
+
+        function sanitizeFB(str) { return str.replace(/[\.\#\$\/\[\]]/g, "-"); }
+
+        function calcularBBox(imgObj) {
+            try {
+                let oc = document.createElement('canvas'); oc.width = imgObj.width; oc.height = imgObj.height; let octx = oc.getContext('2d'); octx.drawImage(imgObj, 0, 0);
+                let data = octx.getImageData(0,0,oc.width,oc.height).data; let minX = oc.width, minY = oc.height, maxX = 0, maxY = 0;
+                for(let y=0; y<oc.height; y++){ for(let x=0; x<oc.width; x++){ let alpha = data[(y*oc.width + x)*4 + 3]; if(alpha > 10){ if(x<minX) minX=x; if(x>maxX) maxX=x; if(y<minY) minY=y; if(y>maxY) maxY=y; } } }
+                if(maxX >= minX && maxY >= minY) return { x: minX/oc.width, y: minY/oc.height, w: (maxX-minX+1)/oc.width, h: (maxY-minY+1)/oc.height };
+            } catch(e) {}
+            return { x:0, y:0, w:1, h:1 };
+        }
+
+        let customTempImg = null; let customTempTerminais = [];
+        function abrirCriador() { fecharModal(); let dl = document.getElementById('catList'); dl.innerHTML = ''; Object.keys(CATALOGO).forEach(cat => { let opt = document.createElement('option'); opt.value = cat; dl.appendChild(opt); }); document.getElementById('modalCreator').style.display = 'flex'; setTimeout(() => { document.getElementById('modalCreator').style.opacity = '1'; }, 10); limparBornesCustom(); document.getElementById('customCompName').value = ''; document.getElementById('customCompCategory').value = ''; document.getElementById('creatorImage').style.display = 'none'; document.getElementById('uploadPlaceholder').style.display = 'flex'; }
+        function fecharCriador() { document.getElementById('modalCreator').style.opacity = '0'; setTimeout(() => document.getElementById('modalCreator').style.display = 'none', 200); }
+        
+        function carregarImagemCustom(event) { 
+            const file = event.target.files[0]; 
+            if(file) { 
+                if (file.type !== "image/png") { mostrarAviso("Apenas imagens com fundo transparente (PNG) são aceitas.", "erro"); return; }
+                const reader = new FileReader(); 
+                reader.onload = function(e) { 
+                    const imgObj = new Image(); 
+                    imgObj.onload = function() { 
+                        let maxDim = 200; let w = imgObj.width, h = imgObj.height;
+                        if (w > maxDim || h > maxDim) { if (w > h) { h = Math.round(h * (maxDim/w)); w = maxDim; } else { w = Math.round(w * (maxDim/h)); h = maxDim; } }
+                        const offCanvas = document.createElement('canvas'); offCanvas.width = w; offCanvas.height = h; const offCtx = offCanvas.getContext('2d'); offCtx.drawImage(imgObj, 0, 0, w, h); 
+                        customTempImg = offCanvas.toDataURL('image/png');
+                        const imgEl = document.getElementById('creatorImage'); imgEl.onload = function() { document.getElementById('uploadPlaceholder').style.display = 'none'; imgEl.style.display = 'block'; limparBornesCustom(); }
+                        imgEl.src = customTempImg; 
+                    }
+                    imgObj.src = e.target.result; 
+                }
+                reader.readAsDataURL(file); 
+            } 
+        }
+        
+        function adicionarBorneCustom(event) { if(!customTempImg) return; const imgEl = document.getElementById('creatorImage'); const rect = imgEl.getBoundingClientRect(); const renderW = imgEl.width; const renderH = imgEl.height; const offsetX = (rect.width - renderW)/2; const offsetY = (rect.height - renderH)/2; const clickX = event.clientX - rect.left - offsetX; const clickY = event.clientY - rect.top - offsetY; if(clickX >= 0 && clickX <= renderW && clickY >= 0 && clickY <= renderH) { customTempTerminais.push({ px: clickX / renderW, py: clickY / renderH }); desenharBornesPreview(); } }
+        function limparBornesCustom() { customTempTerminais = []; desenharBornesPreview(); }
+        function desenharBornesPreview() { const canvas = document.getElementById('creatorCanvas'); const imgEl = document.getElementById('creatorImage'); const rect = imgEl.parentElement.getBoundingClientRect(); canvas.width = rect.width; canvas.height = rect.height; const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); if(!customTempImg) return; const renderW = imgEl.width; const renderH = imgEl.height; const offsetX = (rect.width - renderW)/2; const offsetY = (rect.height - renderH)/2; document.getElementById('terminalCount').innerText = `Terminais marcados: ${customTempTerminais.length}`; customTempTerminais.forEach(t => { const x = offsetX + (t.px * renderW); const y = offsetY + (t.py * renderH); ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke(); }); }
+        
+        function salvarComponenteCustom() { 
+            let rawNome = document.getElementById('customCompName').value.trim(); let rawCat = document.getElementById('customCompCategory').value.trim(); 
+            if(!rawNome || !customTempImg) { mostrarAviso("Dê um nome e carregue uma imagem!", "erro"); return; } 
+            if(!rawCat) { mostrarAviso("Defina uma categoria para o componente!", "erro"); return; }
+            
+            const nome = sanitizeFB(rawNome); const catSelected = sanitizeFB(rawCat);
+            
+            Object.keys(CATALOGO).forEach(cat => { if (CATALOGO[cat] && !Array.isArray(CATALOGO[cat])) CATALOGO[cat] = Object.values(CATALOGO[cat]); });
+            let existe = false; Object.values(CATALOGO).forEach(lista => { if(lista && lista.includes(nome)) existe = true; }); 
+            if(existe) { mostrarAviso("Já existe um componente com este nome!", "erro"); return; } 
+            
+            const imgObj = new Image(); 
+            imgObj.onload = () => { 
+                let baseW = imgObj.width; let baseH = imgObj.height; 
+                if(baseW > 250) { let ratio = 250/baseW; baseW = 250; baseH = baseH * ratio; } 
+                let bBox = calcularBBox(imgObj);
+                DB_CUSTOM[nome] = { src: customTempImg, terminais: customTempTerminais || [], w: baseW, h: baseH, bBox: bBox }; 
+                if(!CATALOGO[catSelected]) CATALOGO[catSelected] = []; if(!Array.isArray(CATALOGO[catSelected])) CATALOGO[catSelected] = Object.values(CATALOGO[catSelected]); CATALOGO[catSelected].push(nome); 
+                saveCustomComponents(); mostrarAviso(`Componente "${nome}" criado com sucesso!`, 'sucesso'); renderizarCatalogo(document.getElementById('searchInput').value); fecharCriador(); abrirModal(); 
+            }; 
+            imgObj.src = customTempImg; 
+        }
+
+        class Componente {
+            constructor(x, y, nomeOriginal, isTexto = false, isCustom = false) { 
+                this.x = x; this.y = y; this.nome = nomeOriginal; this.isTexto = isTexto; this.locked = false; this.isCustom = isCustom || !!DB_CUSTOM[nomeOriginal]; 
+                this.groupId = null;
+                if (isTexto) { 
+                    this.textProp = { size: 16, color: '#111827', bg: 'transparent', font: 'Inter' }; ctx.font = `600 ${this.textProp.size}px ${this.textProp.font}`; this.width = ctx.measureText(this.nome).width + 32; this.height = this.textProp.size + 24; this.cat = { familia: 'texto' }; this.terminais = []; 
+                } else if (this.isCustom) { 
+                    const data = DB_CUSTOM[this.nome]; this.width = data.w; this.height = data.h; this.cat = { familia: 'custom' }; 
+                    this.imgObj = new Image(); this.imgObj.crossOrigin = "Anonymous"; this.imgObj.src = data.src; 
+                    this.terminais = (data.terminais || []).map(t => ({ px: t.px, py: t.py, x: t.px * this.width, y: t.py * this.height })); 
+                    this.imgObj.onload = () => { if(!DB_CUSTOM[this.nome].bBox) { DB_CUSTOM[this.nome].bBox = calcularBBox(this.imgObj); saveCustomComponents(); } atualizarTela(); };
+                } 
+            }
+            getBounds() {
+                if (this.isCustom && DB_CUSTOM[this.nome] && DB_CUSTOM[this.nome].bBox) { let b = DB_CUSTOM[this.nome].bBox; return { x: this.x + b.x * this.width, y: this.y + b.y * this.height, w: b.w * this.width, h: b.h * this.height }; }
+                return { x: this.x, y: this.y, w: this.width, h: this.height };
+            }
+            desenhar(targetCtx = ctx, isThumb = false) {
+                targetCtx.save(); let isSelected = componentesSelecionados.has(this) && !isThumb; 
+                if(!isThumb && isSelected) { 
+                    targetCtx.strokeStyle = this.locked ? '#ef4444' : '#4f46e5'; targetCtx.lineWidth = 2; 
+                    let b = this.getBounds(); targetCtx.strokeRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4); 
+                    if (!this.locked && this.isCustom) { targetCtx.fillStyle = '#ffffff'; targetCtx.strokeStyle = '#4f46e5'; targetCtx.beginPath(); targetCtx.arc(b.x + b.w, b.y + b.h, 6/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); }
+                }
+                if(this.isTexto) { targetCtx.font = `600 ${this.textProp.size}px ${this.textProp.font}`; if(this.textProp.bg !== 'transparent') { targetCtx.fillStyle = this.textProp.bg; targetCtx.beginPath(); targetCtx.roundRect(this.x, this.y, this.width, this.height, 8); targetCtx.fill(); } targetCtx.fillStyle = this.textProp.color; targetCtx.textAlign = "center"; targetCtx.textBaseline = "middle"; targetCtx.fillText(this.nome, this.x + this.width/2, this.y + this.height/2); targetCtx.restore(); return; }
+                if(this.isCustom) { if(this.imgObj && this.imgObj.complete) { targetCtx.shadowColor = 'rgba(0,0,0,0.3)'; targetCtx.shadowBlur = 10; targetCtx.shadowOffsetY = 5; targetCtx.drawImage(this.imgObj, this.x, this.y, this.width, this.height); targetCtx.shadowColor = 'transparent'; } if(!isThumb) { this.terminais.forEach(t => { targetCtx.fillStyle = 'rgba(0,0,0,0.5)'; targetCtx.beginPath(); targetCtx.arc(this.x + t.x, this.y + t.y, 4, 0, Math.PI * 2); targetCtx.fill(); }); } targetCtx.restore(); return; }
+                targetCtx.restore();
+            }
+        }
+
+        function drawFerrule(ctx, pTerm, pNext, cor, espessura) {
+            let dx = pNext.x - pTerm.x; let dy = pNext.y - pTerm.y; let angle = Math.atan2(dy, dx);
+            ctx.save(); ctx.translate(pTerm.x, pTerm.y); ctx.rotate(angle); ctx.translate(-4, 0);
+            ctx.fillStyle = '#cbd5e1'; ctx.strokeStyle = '#475569'; ctx.lineWidth = 1; let mw = Math.max(espessura - 1, 2); ctx.beginPath(); ctx.roundRect(0, -mw/2, 7, mw, 1); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#64748b'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 1; let pw = espessura + 4; ctx.beginPath(); ctx.roundRect(6, -pw/2, 8, pw, 2); ctx.fill(); ctx.stroke();
+            ctx.restore();
+        }
+
+        class Fio {
+            constructor(origem, terminalOrigem, startX, startY, cor, tipoLinha) { this.origem = origem; this.terminalOrigem = terminalOrigem; this.destino = null; this.terminalDestino = null; this.endX = startX; this.endY = startY; this.cor = cor; this.tipoLinha = tipoLinha; this.espessura = 4; this.estilo = 'curvo'; this.z = 'frente'; this.pontos = []; this.cobreExposto = false; }
+            obterCaminho() { let coords = []; let sx = this.origem ? this.origem.x + this.terminalOrigem.x : this.endX; let sy = this.origem ? this.origem.y + this.terminalOrigem.y : this.endY; if(this.pontos.length > 0 && !this.origem) { sx = this.pontos[0].x; sy = this.pontos[0].y; } coords.push({x: sx, y: sy}); let startIdx = (!this.origem && this.pontos.length > 0) ? 1 : 0; for(let i=startIdx; i<this.pontos.length; i++) coords.push(this.pontos[i]); let ex = this.destino ? this.destino.x + this.terminalDestino.x : this.endX; let ey = this.destino ? this.destino.y + this.terminalDestino.y : this.endY; if(this.destino || (desenhandoFio && this === fioAtual) || (!this.destino && this.pontos.length === 0)) coords.push({x: ex, y: ey}); return coords; }
+            construirPath2D() { let path2d = new Path2D(); let path = this.obterCaminho(); if(path.length < 2) return path2d; path2d.moveTo(path[0].x, path[0].y); if (this.estilo === 'quadrado') { for(let i=1; i<path.length; i++) path2d.lineTo(path[i].x, path[i].y); } else { if(path.length === 2) { let cp1X = path[0].x; let cp1Y = path[0].y + (path[1].y - path[0].y)/2; let cp2X = path[1].x; let cp2Y = path[1].y - (path[1].y - path[0].y)/2; path2d.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, path[1].x, path[1].y); } else { for (let i = 1; i < path.length - 1; i++) { let xc = (path[i].x + path[i + 1].x) / 2; let yc = (path[i].y + path[i + 1].y) / 2; path2d.quadraticCurveTo(path[i].x, path[i].y, xc, yc); } path2d.lineTo(path[path.length - 1].x, path[path.length - 1].y); } } return path2d; }
+            desenhar(targetCtx = ctx) { 
+                let path2d = this.construirPath2D(); let pathCoords = this.obterCaminho(); if(pathCoords.length < 2) return; targetCtx.save(); 
+                if(this === fioEditando || (this === fioAtual && desenhandoFio) || this === fioManipulado) { targetCtx.strokeStyle = '#4f46e5'; targetCtx.lineWidth = this.espessura + 12; targetCtx.lineCap = 'round'; targetCtx.lineJoin = 'round'; targetCtx.globalAlpha = 0.3; targetCtx.stroke(path2d); targetCtx.globalAlpha = 1.0; } 
+                targetCtx.lineCap = 'round'; targetCtx.lineJoin = 'round'; targetCtx.shadowColor = 'rgba(0,0,0,0.3)'; targetCtx.shadowBlur = 4; targetCtx.shadowOffsetY = 2; targetCtx.strokeStyle = '#111827'; targetCtx.lineWidth = this.espessura + 1; targetCtx.stroke(path2d); 
+                targetCtx.shadowColor = 'transparent'; targetCtx.strokeStyle = this.cor; targetCtx.lineWidth = this.espessura; targetCtx.stroke(path2d); targetCtx.strokeStyle = 'rgba(255,255,255,0.3)'; targetCtx.lineWidth = this.espessura * 0.3; targetCtx.stroke(path2d); 
+                if (this.cobreExposto && !this.destino) { targetCtx.fillStyle = '#b45309'; targetCtx.beginPath(); targetCtx.arc(pathCoords[pathCoords.length-1].x, pathCoords[pathCoords.length-1].y, this.espessura, 0, Math.PI*2); targetCtx.fill(); } 
+                if (this.cobreExposto && !this.origem) { targetCtx.fillStyle = '#b45309'; targetCtx.beginPath(); targetCtx.arc(pathCoords[0].x, pathCoords[0].y, this.espessura, 0, Math.PI*2); targetCtx.fill(); } 
+                if (ferramentaAtual === 'entortar' && targetCtx === ctx) { targetCtx.fillStyle = '#fff'; targetCtx.strokeStyle = '#4f46e5'; targetCtx.lineWidth = 2; this.pontos.forEach(p => { targetCtx.beginPath(); targetCtx.arc(p.x, p.y, 6/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); }); } 
+                if (this === fioManipulado && ferramentaAtual === 'mover' && targetCtx === ctx) { targetCtx.fillStyle = '#fff'; targetCtx.strokeStyle = '#4f46e5'; targetCtx.lineWidth = 2; targetCtx.beginPath(); targetCtx.arc(pathCoords[0].x, pathCoords[0].y, 8/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); targetCtx.beginPath(); targetCtx.arc(pathCoords[pathCoords.length-1].x, pathCoords[pathCoords.length-1].y, 8/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); } 
+                
+                if (pathCoords.length > 1) { 
+                    if (this.origem) {
+                        let tgX = pathCoords[1].x; let tgY = pathCoords[1].y;
+                        if(this.estilo === 'curvo' && pathCoords.length === 2) { tgX = pathCoords[0].x; tgY = pathCoords[0].y + (pathCoords[1].y - pathCoords[0].y)/2; }
+                        drawFerrule(targetCtx, pathCoords[0], {x: tgX, y: tgY}, this.cor, this.espessura); 
+                    }
+                    if (this.destino) {
+                        let tgX = pathCoords[pathCoords.length-2].x; let tgY = pathCoords[pathCoords.length-2].y;
+                        if(this.estilo === 'curvo' && pathCoords.length === 2) { tgX = pathCoords[1].x; tgY = pathCoords[1].y - (pathCoords[1].y - pathCoords[0].y)/2; }
+                        drawFerrule(targetCtx, pathCoords[pathCoords.length-1], {x: tgX, y: tgY}, this.cor, this.espessura); 
+                    }
+                }
+                targetCtx.restore(); 
+            }
+        }
+
+        function removerAcentos(str) { if(!str) return ""; return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+
+        function filtrarCatalogo() { let input = document.getElementById('searchInput'); if(input) renderizarCatalogo(input.value); }
+
+        function renderizarCatalogo(filtro = "") { 
+            try {
+                const containerCatalogo = document.getElementById('catalogContainer'); const emptyMsg = document.getElementById('emptyCatalogMsg');
+                Array.from(containerCatalogo.children).forEach(child => { if (child.id !== 'emptyCatalogMsg') child.remove(); });
+                let termoBusca = removerAcentos(filtro); let temItens = false;
+                if(CATALOGO) {
+                    Object.keys(CATALOGO).forEach(categoria => { 
+                        if (CATALOGO[categoria] && !Array.isArray(CATALOGO[categoria])) CATALOGO[categoria] = Object.values(CATALOGO[categoria]);
+                        if(Array.isArray(CATALOGO[categoria])) {
+                            let catMatch = removerAcentos(categoria).includes(termoBusca);
+                            let itensFiltrados = CATALOGO[categoria].filter(item => item && (catMatch || removerAcentos(item).includes(termoBusca))); 
+                            if(itensFiltrados.length > 0) { 
+                                temItens = true; let groupDiv = document.createElement('div'); groupDiv.className = 'category-group'; 
+                                let title = document.createElement('div'); title.className = 'category-title'; title.innerText = categoria; groupDiv.appendChild(title); 
+                                let grid = document.createElement('div'); grid.className = 'component-grid'; 
+                                itensFiltrados.forEach(item => { 
+                                    if(DB_CUSTOM[item]) {
+                                        const btn = document.createElement('div'); btn.className = 'comp-btn'; btn.onclick = () => inserirComponente(item); 
+                                        const img = document.createElement('img'); img.src = DB_CUSTOM[item].src; 
+                                        const span = document.createElement('span'); span.innerText = item; 
+                                        btn.appendChild(img); btn.appendChild(span); 
+                                        if(currentActiveUser && currentActiveUser.role === 'admin') { const delBtn = document.createElement('div'); delBtn.className = 'del-catalog-btn'; delBtn.innerHTML = '<i class="ph ph-trash"></i>'; delBtn.onclick = (e) => { e.stopPropagation(); excluirItemCatalogo(item, categoria); }; btn.appendChild(delBtn); }
+                                        grid.appendChild(btn); 
+                                    }
+                                }); 
+                                groupDiv.appendChild(grid); containerCatalogo.appendChild(groupDiv); 
+                            } 
+                        }
+                    }); 
+                }
+                emptyMsg.style.display = temItens ? 'none' : 'flex';
+            } catch(e) { console.error("Erro no catálogo:", e); }
+        }
+
+        function excluirItemCatalogo(nomeItem, categoria) {
+            if(confirm(`Tem certeza que deseja EXCLUIR o componente "${nomeItem}" do catálogo?\n(Isso não afetará os que já estão no projeto)`)) {
+                if(CATALOGO[categoria]) { 
+                    if(!Array.isArray(CATALOGO[categoria])) CATALOGO[categoria] = Object.values(CATALOGO[categoria]);
+                    CATALOGO[categoria] = CATALOGO[categoria].filter(i => i !== nomeItem); 
+                    if(CATALOGO[categoria].length === 0) delete CATALOGO[categoria]; 
+                }
+                if(DB_CUSTOM[nomeItem]) delete DB_CUSTOM[nomeItem];
+                saveCustomComponents(); mostrarAviso(`Componente "${nomeItem}" excluído do catálogo.`, "info"); renderizarCatalogo(document.getElementById('searchInput').value);
+            }
+        }
+
+        function moverZIndex(dir) {
+            if(componentesSelecionados.size > 0) {
+                salvarEstado(); let compsToMove = Array.from(componentesSelecionados);
+                compsToMove.forEach(c => { let idx = componentes.indexOf(c); if(idx > -1) componentes.splice(idx, 1); });
+                if(dir === 1) componentes.push(...compsToMove); else componentes.unshift(...compsToMove);
+                atualizarTela(); 
+            }
+        }
+
+        function duplicarSelecionados() {
+            if (componentesSelecionados.size === 0) return;
+            salvarEstado(); let novosSelecionados = new Set();
+            
+            let isGrouped = false; let firstGroupId = [...componentesSelecionados][0].groupId;
+            if (firstGroupId) { isGrouped = true; componentesSelecionados.forEach(c => { if(c.groupId !== firstGroupId) isGrouped = false; }); }
+            let newGroupId = isGrouped ? 'group_' + Date.now() : null;
+
+            componentesSelecionados.forEach(c => {
+                let novo = new Componente(c.x + 24, c.y + 24, c.nome, c.isTexto, c.isCustom);
+                novo.width = c.width; novo.height = c.height; novo.locked = c.locked;
+                if(c.isTexto) novo.textProp = JSON.parse(JSON.stringify(c.textProp));
+                if(isGrouped) novo.groupId = newGroupId;
+                
+                // CRUCIAL: Recalcula a posição dos terminais baseados na altura/largura novas já clonadas
+                if (novo.isCustom && DB_CUSTOM[novo.nome]) { 
+                    novo.terminais = (DB_CUSTOM[novo.nome].terminais || []).map(t => ({ 
+                        px: t.px, py: t.py, x: t.px * novo.width, y: t.py * novo.height 
+                    })); 
+                } else if (!novo.isCustom && novo.gerarTerminais) { novo.gerarTerminais(); }
+                
+                componentes.push(novo); novosSelecionados.add(novo);
+            });
+            componentesSelecionados = novosSelecionados;
+            atualizarMenuFlutuante(); atualizarTela(); mostrarAviso("Item(ns) duplicado(s).", "sucesso");
+        }
+
+        function mesclarSelecionados() { if (componentesSelecionados.size < 2) return; salvarEstado(); let gId = 'group_' + Date.now(); componentesSelecionados.forEach(c => { c.groupId = gId; }); mostrarAviso("Itens agrupados.", "sucesso"); atualizarMenuFlutuante(); atualizarTela(); }
+        function desmesclarSelecionados() { salvarEstado(); componentesSelecionados.forEach(c => { c.groupId = null; }); mostrarAviso("Itens separados.", "sucesso"); atualizarMenuFlutuante(); atualizarTela(); }
+
+        function atualizarDpadVisibility() { const dpad = document.getElementById('dpadControls'); if ((ferramentaAtual === 'mover' && componentesSelecionados.size > 0) || (ferramentaAtual === 'fio' && (terminalAtivo || desenhandoFio))) { dpad.classList.add('active'); } else { dpad.classList.remove('active'); } }
+        
+        function setFerramenta(nome) { 
+            ferramentaAtual = nome; document.querySelectorAll('.tool-btn:not(.history-btn)').forEach(b => b.classList.remove('active')); 
+            const wireTools = { 'fio': '<i class="ph ph-vector-two"></i>', 'entortar': '<i class="ph ph-waves"></i>', 'alicate': '<i class="ph ph-scissors"></i>'};
+            const btnFio = document.getElementById('btnFioMain');
+            if(wireTools[nome]) { btnFio.innerHTML = wireTools[nome]; btnFio.classList.add('active'); } else if (nome === 'mover') { document.getElementById('btnMover').classList.add('active'); }
+            if(nome !== 'mover') { fioManipulado = null; componentesSelecionados.clear(); atualizarMenuFlutuante(); } 
+            if(nome !== 'fio') { terminalAtivo = null; } 
+            let menu = document.getElementById('wireSubMenu'); if (menu.classList.contains('show')) { menu.classList.remove('show'); setTimeout(() => menu.style.display = 'none', 200); }
+            fecharMenuFio(); atualizarDpadVisibility(); atualizarTela(); 
+        }
+
+        function abrirModal() { renderizarCatalogo(document.getElementById('searchInput').value); document.getElementById('modalAdd').style.display = 'flex'; setTimeout(() => { document.getElementById('modalAdd').style.opacity = '1'; }, 10); }
+        function fecharModal() { document.getElementById('modalAdd').style.opacity = '0'; setTimeout(() => document.getElementById('modalAdd').style.display = 'none', 200); }
+        function abrirExport() { document.getElementById('modalExport').style.display = 'flex'; setTimeout(() => { document.getElementById('modalExport').style.opacity = '1'; }, 10); }
+        function fecharExport() { document.getElementById('modalExport').style.opacity = '0'; setTimeout(() => document.getElementById('modalExport').style.display = 'none', 200); }
+        function abrirModalConfirmarLimpeza() { document.getElementById('modalConfirmClear').style.display = 'flex'; setTimeout(() => { document.getElementById('modalConfirmClear').style.opacity = '1'; }, 10); }
+
+        function inserirComponente(nome) { salvarEstado(); let pt = toWorld(canvas.width/2, canvas.height/2); let initX = Math.round((pt.x - 24) / 24) * 24; let initY = Math.round((pt.y - 48) / 24) * 24; let comp = new Componente(initX, initY, nome); componentes.push(comp); componentesSelecionados.clear(); componentesSelecionados.add(comp); document.getElementById('btnMover').setAttribute('data-tooltip', 'Modo Inteligente'); atualizarMenuFlutuante(); atualizarTela(); fecharModal(); setFerramenta('mover'); }
+        
+        function toggleLockSelected() { 
+            if(componentesSelecionados.size > 0) { 
+                salvarEstado(); 
+                let allLocked = true; componentesSelecionados.forEach(c => { if(!c.locked) allLocked = false; });
+                componentesSelecionados.forEach(c => { c.locked = !allLocked; });
+                atualizarMenuFlutuante(); atualizarTela(); 
+            } 
+        }
+
+        function deletarSelecionados() { salvarEstado(); componentesSelecionados.forEach(c => { componentes.splice(componentes.indexOf(c), 1); fios = fios.filter(f => f.origem !== c && f.destino !== c); }); if(fioManipulado) { fios.splice(fios.indexOf(fioManipulado), 1); } componentesSelecionados.clear(); fioManipulado = null; atualizarTela(); atualizarMenuFlutuante(); atualizarDpadVisibility(); }
+
+        function atualizarMenuFlutuante() { 
+            const menu = document.getElementById('floatActionMenu'); const hasSelection = componentesSelecionados.size > 0 || fioManipulado !== null;
+            document.getElementById('btnDeleteSelectedToolbar').style.display = hasSelection ? 'flex' : 'none';
+            
+            if(componentesSelecionados.size > 0 && ferramentaAtual === 'mover') { 
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                componentesSelecionados.forEach(c => { let b = c.getBounds(); if(b.x < minX) minX = b.x; if(b.y < minY) minY = b.y; if(b.x + b.w > maxX) maxX = b.x + b.w; if(b.y + b.h > maxY) maxY = b.y + b.h; });
+                
+                let scr = toScreen(maxX + 10, minY); 
+                menu.style.display = 'flex'; menu.style.flexDirection = 'column'; menu.style.left = scr.x + 'px'; menu.style.top = scr.y + 'px'; 
+                
+                if(componentesSelecionados.size === 1) { 
+                    let comp = [...componentesSelecionados][0]; const btnLock = document.getElementById('btnFloatLock'); 
+                    if(comp.locked) { btnLock.innerHTML = '<i class="ph ph-lock-key"></i>'; btnLock.classList.add('locked'); } else { btnLock.innerHTML = '<i class="ph ph-lock-open"></i>'; btnLock.classList.remove('locked'); } 
+                    document.getElementById('btnFloatEdit').style.display = comp.isTexto ? 'flex' : 'none'; 
+                } else { 
+                    const btnLock = document.getElementById('btnFloatLock'); btnLock.innerHTML = '<i class="ph ph-lock-open"></i>'; btnLock.classList.remove('locked');
+                    document.getElementById('btnFloatEdit').style.display = 'none'; 
+                }
+
+                let allGrouped = true; let firstGroupId = null;
+                componentesSelecionados.forEach(c => { if(!c.groupId) allGrouped = false; else { if(!firstGroupId) firstGroupId = c.groupId; else if(firstGroupId !== c.groupId) allGrouped = false; } });
+                
+                const btnGroup = document.getElementById('btnFloatGroup');
+                if(componentesSelecionados.size > 1) {
+                    btnGroup.style.display = 'flex';
+                    if(allGrouped && firstGroupId) { btnGroup.innerHTML = '<i class="ph ph-exclude"></i>'; btnGroup.title = "Separar Itens"; btnGroup.onclick = desmesclarSelecionados; } 
+                    else { btnGroup.innerHTML = '<i class="ph ph-intersect"></i>'; btnGroup.title = "Mesclar Itens"; btnGroup.onclick = mesclarSelecionados; }
+                } else { btnGroup.style.display = 'none'; }
+            } else { menu.style.display = 'none'; } 
+        }
+
+        function desenharGridDinâmico() { ctx.save(); ctx.strokeStyle = 'rgba(209, 213, 219, 0.8)'; ctx.lineWidth = 1; let s = 24 * camera.zoom; let ox = camera.x % s; let oy = camera.y % s; let startX = ox - s; let startY = oy - s; ctx.beginPath(); for(let x = startX; x < canvas.width + s; x += s) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); } for(let y = startY; y < canvas.height + s; y += s) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); } ctx.stroke(); ctx.restore(); }
+
+        function atualizarTela() { 
+            ctx.clearRect(0, 0, canvas.width, canvas.height); desenharGridDinâmico(); 
+            ctx.save(); ctx.translate(camera.x, camera.y); ctx.scale(camera.zoom, camera.zoom); 
+            fios.filter(f => f.z === 'fundo').forEach(f => f.desenhar(ctx)); 
+            componentes.forEach(c => c.desenhar(ctx)); 
+            fios.filter(f => f.z === 'frente').forEach(f => f.desenhar(ctx)); 
+
+            if (terminalAtivo && ferramentaAtual === 'fio' && !desenhandoFio) {
+                let tx = terminalAtivo.c.x + terminalAtivo.t.x; let ty = terminalAtivo.c.y + terminalAtivo.t.y;
+                ctx.save(); ctx.translate(tx, ty); ctx.fillStyle = '#4f46e5'; ctx.beginPath(); ctx.arc(0, 0, 16/camera.zoom, 0, Math.PI*2); ctx.globalAlpha = 0.3; ctx.fill(); ctx.globalAlpha = 1.0;
+                let s = 8/camera.zoom; let d = 26/camera.zoom; ctx.fillStyle = '#4f46e5';
+                ctx.beginPath(); ctx.moveTo(0, -d); ctx.lineTo(-s, -d+s); ctx.lineTo(s, -d+s); ctx.fill(); 
+                ctx.beginPath(); ctx.moveTo(0, d); ctx.lineTo(-s, d-s); ctx.lineTo(s, d-s); ctx.fill(); 
+                ctx.beginPath(); ctx.moveTo(-d, 0); ctx.lineTo(-d+s, -s); ctx.lineTo(-d+s, s); ctx.fill(); 
+                ctx.beginPath(); ctx.moveTo(d, 0); ctx.lineTo(d-s, -s); ctx.lineTo(d-s, s); ctx.fill(); ctx.restore();
+            }
+
+            if (desenhandoFio && fioAtual) { 
+                let startX = fioAtual.origem ? fioAtual.origem.x + fioAtual.terminalOrigem.x : fioAtual.endX; let startY = fioAtual.origem ? fioAtual.origem.y + fioAtual.terminalOrigem.y : fioAtual.endY; 
+                if(fioAtual.pontos.length > 0 && !fioAtual.origem) { startX = fioAtual.pontos[0].x; startY = fioAtual.pontos[0].y; } 
+                ctx.beginPath(); ctx.arc(startX, startY, 12/camera.zoom, 0, Math.PI*2); ctx.fillStyle = 'rgba(79, 70, 229, 0.3)'; ctx.fill(); ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 2; ctx.stroke(); 
+            } 
+            ctx.restore(); 
+            
+            triggerAutoSave();
+        }
+
+        function dpadMove(dx, dy) { 
+            const stepSize = 24; 
+            if (ferramentaAtual === 'mover' && componentesSelecionados.size > 0) { 
+                salvarEstado(); componentesSelecionados.forEach(c => { if(!c.locked) { c.x += dx * stepSize; c.y += dy * stepSize; } }); atualizarMenuFlutuante(); atualizarTela(); 
+            } else if (ferramentaAtual === 'fio' && (terminalAtivo || desenhandoFio)) {
+                if (!desenhandoFio && terminalAtivo) {
+                    salvarEstado(); desenhandoFio = true; fecharMenuFio(); fioManipulado = null; componentesSelecionados.clear(); atualizarMenuFlutuante();
+                    let tx = terminalAtivo.c.x + terminalAtivo.t.x; let ty = terminalAtivo.c.y + terminalAtivo.t.y;
+                    fioAtual = new Fio(terminalAtivo.c, terminalAtivo.t, tx, ty, document.getElementById('corFio').value, 'fio');
+                    fioAtual.estilo = 'quadrado'; fioAtual.lastDir = {dx: dx, dy: dy}; fios.push(fioAtual);
+                } else if (desenhandoFio && fioAtual) {
+                    if (fioAtual.lastDir && (fioAtual.lastDir.dx !== dx || fioAtual.lastDir.dy !== dy)) {
+                        fioAtual.pontos.push({x: fioAtual.endX, y: fioAtual.endY}); fioAtual.lastDir = {dx: dx, dy: dy};
+                    }
+                }
+                fioAtual.endX += dx * stepSize; fioAtual.endY += dy * stepSize; atualizarTela();
+            }
+        }
+
+        function dpadConfirm() { 
+            if (ferramentaAtual === 'mover' && componentesSelecionados.size > 0) { 
+                componentesSelecionados.clear(); atualizarMenuFlutuante(); atualizarDpadVisibility(); atualizarTela(); 
+            } else if (ferramentaAtual === 'fio' && desenhandoFio && fioAtual) {
+                let wx = fioAtual.endX; let wy = fioAtual.endY; let conectou = false;
+                for (let c of componentes) { for (let t of c.terminais) { if (Math.hypot(wx - (c.x + t.x), wy - (c.y + t.y)) < 30/camera.zoom && (c !== fioAtual.origem || t !== fioAtual.terminalOrigem)) { fioAtual.destino = c; fioAtual.terminalDestino = t; fioAtual.endX = c.x + t.x; fioAtual.endY = c.y + t.y; conectou = true; break; } } if (conectou) break; }
+                if (!conectou) { fioAtual.cobreExposto = true; } 
+                desenhandoFio = false; fioAtual = null; terminalAtivo = null; atualizarDpadVisibility(); atualizarBotoesHistorico(); atualizarTela();
+            }
+        }
+
+        function obterFioProximoPath2D(wx, wy) { for (let i = fios.length - 1; i >= 0; i--) { let f = fios[i]; let p2d = f.construirPath2D(); ctx.lineWidth = Math.max(f.espessura + 20, 30); ctx.lineCap = 'round'; ctx.save(); ctx.translate(camera.x, camera.y); ctx.scale(camera.zoom, camera.zoom); let isHit = ctx.isPointInStroke(p2d, wx * camera.zoom + camera.x, wy * camera.zoom + camera.y); ctx.restore(); if (isHit) { let pathCoords = f.obterCaminho(); let minDist = Infinity; let segIndex = 0; let hitPt = {x: wx, y: wy}; for(let j=0; j<pathCoords.length-1; j++) { let A = wx - pathCoords[j].x; let B = wy - pathCoords[j].y; let C = pathCoords[j+1].x - pathCoords[j].x; let D = pathCoords[j+1].y - pathCoords[j].y; let dot = A * C + B * D; let len_sq = C * C + D * D; let param = -1; if (len_sq != 0) param = dot / len_sq; let xx, yy; if (param < 0) { xx = pathCoords[j].x; yy = pathCoords[j].y; } else if (param > 1) { xx = pathCoords[j+1].x; yy = pathCoords[j+1].y; } else { xx = pathCoords[j].x + param * C; yy = pathCoords[j].y + param * D; } let dist = Math.hypot(wx - xx, wy - yy); if(dist < minDist) { minDist = dist; segIndex = j; hitPt = {x: xx, y: yy}; } } return { fio: f, pt: hitPt, segIndex: segIndex }; } } return null; }
+        function abrirMenuFio(fio, sx, sy) { fioEditando = fio; let menu = document.getElementById('wirePropMenu'); document.getElementById('wireEditColor').value = fio.cor; document.getElementById('wireThick').value = fio.espessura; document.getElementById('wireStyle').value = fio.estilo; document.getElementById('wireZ').value = fio.z; menu.style.display = 'flex'; menu.style.left = Math.min(sx + 10, window.innerWidth - 240) + 'px'; menu.style.top = Math.min(sy + 10, window.innerHeight - 250) + 'px'; atualizarTela(); }
+        function fecharMenuFio() { fioEditando = null; document.getElementById('wirePropMenu').style.display = 'none'; atualizarTela(); }
+        function atualizarFioSelecionado() { if(!fioEditando) return; salvarEstado(); fioEditando.cor = document.getElementById('wireEditColor').value; fioEditando.espessura = parseInt(document.getElementById('wireThick').value); fioEditando.estilo = document.getElementById('wireStyle').value; fioEditando.z = document.getElementById('wireZ').value; atualizarTela(); }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if(e.target.closest('#dpadControls') || e.target.closest('.bottom-dock') || e.target.closest('.zoom-dock')) return;
+            canvas.setPointerCapture(e.pointerId); const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y;
+
+            if (ferramentaAtual === 'alicate') { 
+                let hit = obterFioProximoPath2D(wx, wy); 
+                if (hit) { 
+                    salvarEstado(); let f = hit.fio; let path = f.obterCaminho();
+                    let pA = path[hit.segIndex]; let pB = path[hit.segIndex+1];
+                    let dx = pB.x - pA.x; let dy = pB.y - pA.y; let len = Math.hypot(dx, dy);
+                    let ux = len === 0 ? 0 : dx/len; let uy = len === 0 ? 0 : dy/len;
+                    let gap = 2; 
+                    
+                    let pt1 = {x: hit.pt.x - ux*gap, y: hit.pt.y - uy*gap}; let pt2 = {x: hit.pt.x + ux*gap, y: hit.pt.y + uy*gap};
+                    let f1 = new Fio(f.origem, f.terminalOrigem, pt1.x, pt1.y, f.cor, f.tipoLinha); 
+                    f1.cobreExposto = true; f1.espessura = f.espessura; f1.estilo = f.estilo; f1.z = f.z;
+                    if (f.origem) { f1.pontos = path.slice(1, hit.segIndex + 1); } else { f1.pontos = path.slice(0, hit.segIndex + 1); }
+                    f1.endX = pt1.x; f1.endY = pt1.y;
+                    
+                    let f2 = new Fio(null, null, pt2.x, pt2.y, f.cor, f.tipoLinha); 
+                    f2.destino = f.destino; f2.terminalDestino = f.terminalDestino; f2.cobreExposto = true; f2.espessura = f.espessura; f2.estilo = f.estilo; f2.z = f.z;
+                    if (f.destino) { f2.pontos = [pt2, ...path.slice(hit.segIndex + 1, path.length - 1)]; } 
+                    else { f2.pontos = [pt2, ...path.slice(hit.segIndex + 1)]; if (f2.pontos.length > 0) { f2.endX = f2.pontos[f2.pontos.length-1].x; f2.endY = f2.pontos[f2.pontos.length-1].y; } }
+                    
+                    fios.splice(fios.indexOf(f), 1); fios.push(f1, f2); 
+                    if(fioManipulado === f) fioManipulado = null; atualizarTela(); 
+                } 
+                return; 
+            }
+            if (ferramentaAtual === 'entortar') { fecharMenuFio(); for(let f of fios) for(let i=0; i<f.pontos.length; i++) if(Math.hypot(wx - f.pontos[i].x, wy - f.pontos[i].y) < 25/camera.zoom) { salvarEstado(); nóArrastado = f.pontos[i]; return; } let hit = obterFioProximoPath2D(wx, wy); if (hit) { salvarEstado(); let novoNo = {x: wx, y: wy}; hit.fio.pontos.splice(hit.segIndex, 0, novoNo); nóArrastado = novoNo; } atualizarTela(); return; }
+            if (ferramentaAtual === 'fio') { 
+                if (terminalAtivo) { let tx = terminalAtivo.c.x + terminalAtivo.t.x; let ty = terminalAtivo.c.y + terminalAtivo.t.y; if (Math.hypot(wx - tx, wy - ty) < 40/camera.zoom) { terminalAtivo.sx = wx; terminalAtivo.sy = wy; return; } else { terminalAtivo = null; atualizarDpadVisibility(); } }
+                for (let c of componentes) { for (let t of c.terminais) { if (Math.hypot(wx - (c.x + t.x), wy - (c.y + t.y)) < 30/camera.zoom) { terminalAtivo = {c: c, t: t, sx: wx, sy: wy}; atualizarDpadVisibility(); atualizarTela(); return; } } } 
+                let hit = obterFioProximoPath2D(wx, wy); if (hit && hit.fio.tipoLinha === 'conduite') { salvarEstado(); desenhandoFio = true; fecharMenuFio(); fioManipulado = null; componentesSelecionados.clear(); atualizarMenuFlutuante(); fioAtual = new Fio(null, null, hit.pt.x, hit.pt.y, document.getElementById('corFio').value, 'fio'); fioAtual.pontos.push({x: hit.pt.x, y: hit.pt.y}); fios.push(fioAtual); }
+                atualizarTela(); return; 
+            }
+            if (ferramentaAtual === 'mover') {
+                let clicouHandle = false;
+                if (componentesSelecionados.size === 1) {
+                    let selComp = [...componentesSelecionados][0];
+                    if (!selComp.locked && selComp.isCustom) {
+                        let b = selComp.getBounds(); let hx = b.x + b.w; let hy = b.y + b.h;
+                        if (Math.hypot(wx - hx, wy - hy) < 15/camera.zoom) { clicouHandle = true; isResizing = true; resizeTarget = selComp; salvarEstado(); }
+                    }
+                }
+                if (clicouHandle) return;
+
+                if(fioManipulado) { let path = fioManipulado.obterCaminho(); if(path.length > 0) { if(Math.hypot(wx - path[0].x, wy - path[0].y) < 15/camera.zoom) { handleArrasteFio = 'start'; salvarEstado(); if(fioManipulado.origem) { fioManipulado.pontos.unshift({x: path[0].x, y: path[0].y}); fioManipulado.origem = null; fioManipulado.terminalOrigem = null; } else if(fioManipulado.pontos.length===0) { fioManipulado.pontos.push({x: path[0].x, y: path[0].y}); } return; } if(Math.hypot(wx - path[path.length-1].x, wy - path[path.length-1].y) < 15/camera.zoom) { handleArrasteFio = 'end'; salvarEstado(); if(fioManipulado.destino) { fioManipulado.pontos.push({x: path[path.length-1].x, y: path[path.length-1].y}); fioManipulado.destino = null; fioManipulado.terminalDestino = null; } return; } } }
+                let clicouEmComponente = false; let componentesReversos = [...componentes].reverse();
+                for (let c of componentesReversos) { 
+                    let b = c.getBounds();
+                    if (wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h) { 
+                        clicouEmComponente = true; arrastandoGrupo = true; fecharMenuFio(); fioManipulado = null; dragOffsetX = wx; dragOffsetY = wy; 
+                        if (!componentesSelecionados.has(c)) { 
+                            if(!e.shiftKey) componentesSelecionados.clear(); 
+                            componentesSelecionados.add(c); 
+                            if(c.groupId) { componentes.forEach(gC => { if(gC.groupId === c.groupId) componentesSelecionados.add(gC); }); }
+                            componentes.splice(componentes.indexOf(c), 1); componentes.push(c); 
+                        } 
+                        salvarEstado(); atualizarMenuFlutuante(); break; 
+                    } 
+                }
+                if(!clicouEmComponente) { let hit = obterFioProximoPath2D(wx, wy); if(hit) { fioManipulado = hit.fio; componentesSelecionados.clear(); atualizarMenuFlutuante(); abrirMenuFio(hit.fio, e.clientX, e.clientY); clicouEmComponente = true; } else { fecharMenuFio(); fioManipulado = null; } }
+                
+                if (!clicouEmComponente) { componentesSelecionados.clear(); atualizarMenuFlutuante(); isPanning = true; panStartX = e.clientX; panStartY = e.clientY; } 
+                atualizarDpadVisibility(); atualizarTela();
+            }
+        });
+
+        canvas.addEventListener('pointermove', (e) => { 
+            const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y; 
+            if(isPanning) { camera.x += e.clientX - panStartX; camera.y += e.clientY - panStartY; panStartX = e.clientX; panStartY = e.clientY; atualizarMenuFlutuante(); atualizarTela(); return; } 
+            
+            if (isResizing && resizeTarget) {
+                let b = (DB_CUSTOM[resizeTarget.nome] && DB_CUSTOM[resizeTarget.nome].bBox) ? DB_CUSTOM[resizeTarget.nome].bBox : {x:0, y:0, w:1, h:1};
+                let newFullWidth = (wx - resizeTarget.x) / (b.x + b.w);
+                let newFullHeight = (wy - resizeTarget.y) / (b.y + b.h);
+                
+                if (resizeTarget.imgObj) { let aspect = resizeTarget.imgObj.width / resizeTarget.imgObj.height; if (newFullWidth / aspect > newFullHeight) newFullHeight = newFullWidth / aspect; else newFullWidth = newFullHeight * aspect; }
+                if (newFullWidth > 20 && newFullHeight > 20) { 
+                    resizeTarget.width = newFullWidth; resizeTarget.height = newFullHeight; 
+                    if (DB_CUSTOM[resizeTarget.nome]) { resizeTarget.terminais.forEach(t => { t.x = t.px * newFullWidth; t.y = t.py * newFullHeight; }); } 
+                }
+                atualizarMenuFlutuante(); atualizarTela(); return;
+            }
+
+            if(handleArrasteFio === 'start') { if(fioManipulado.pontos.length > 0) { fioManipulado.pontos[0].x = wx; fioManipulado.pontos[0].y = wy; } else { fioManipulado.endX = wx; fioManipulado.endY = wy; } atualizarTela(); return; } 
+            if(handleArrasteFio === 'end') { if(fioManipulado.pontos.length > 0) { fioManipulado.pontos[fioManipulado.pontos.length-1].x = wx; fioManipulado.pontos[fioManipulado.pontos.length-1].y = wy; } else { fioManipulado.endX = wx; fioManipulado.endY = wy; } atualizarTela(); return; } 
+            
+            if (ferramentaAtual === 'fio' && terminalAtivo && !desenhandoFio) {
+                if (Math.hypot(wx - terminalAtivo.sx, wy - terminalAtivo.sy) > 10/camera.zoom) {
+                    salvarEstado(); desenhandoFio = true; fecharMenuFio(); fioManipulado = null; componentesSelecionados.clear(); atualizarMenuFlutuante();
+                    let tx = terminalAtivo.c.x + terminalAtivo.t.x; let ty = terminalAtivo.c.y + terminalAtivo.t.y;
+                    fioAtual = new Fio(terminalAtivo.c, terminalAtivo.t, tx, ty, document.getElementById('corFio').value, 'fio'); fios.push(fioAtual);
+                }
+            }
+
+            if (desenhandoFio && fioAtual) { fioAtual.endX = wx; fioAtual.endY = wy; atualizarTela(); } 
+            else if (nóArrastado && ferramentaAtual === 'entortar') { nóArrastado.x = wx; nóArrastado.y = wy; atualizarTela(); } 
+            else if (arrastandoGrupo && ferramentaAtual === 'mover') { let dx = wx - dragOffsetX; let dy = wy - dragOffsetY; componentesSelecionados.forEach(c => { if(!c.locked){ c.x += dx; c.y += dy; } }); dragOffsetX = wx; dragOffsetY = wy; atualizarMenuFlutuante(); atualizarTela(); } 
+        });
+
+        canvas.addEventListener('pointerup', (e) => {
+            canvas.releasePointerCapture(e.pointerId); const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y;
+            if (isResizing) { isResizing = false; resizeTarget = null; atualizarMenuFlutuante(); atualizarTela(); return; }
+            if(isPanning) { isPanning = false; return; } if(handleArrasteFio) { handleArrasteFio = null; atualizarTela(); return; }
+            
+            if (desenhandoFio && fioAtual) { 
+                let conectou = false; 
+                for (let c of componentes) { for (let t of c.terminais) { if (Math.hypot(wx - (c.x + t.x), wy - (c.y + t.y)) < 30/camera.zoom && (c !== fioAtual.origem || t !== fioAtual.terminalOrigem)) { fioAtual.destino = c; fioAtual.terminalDestino = t; conectou = true; break; } } if (conectou) break; } 
+                let snapped = false; if (!conectou) { let hitEnd = obterFioProximoPath2D(wx, wy); if (hitEnd && hitEnd.fio.tipoLinha === 'conduite' && fioAtual.tipoLinha !== 'conduite') { fioAtual.endX = hitEnd.pt.x; fioAtual.endY = hitEnd.pt.y; fioAtual.pontos.push({x: hitEnd.pt.x, y: hitEnd.pt.y}); conectou = true; snapped = true; } } 
+                if (!conectou && fioAtual.tipoLinha !== 'conduite') { fios.pop(); historico.pop(); } 
+                else if(!conectou && fioAtual.tipoLinha === 'conduite' && !snapped) { fioAtual.pontos.push({x: wx, y: wy}); } 
+                desenhandoFio = false; fioAtual = null; terminalAtivo = null; atualizarDpadVisibility(); atualizarBotoesHistorico(); atualizarTela(); 
+            }
+            if (arrastandoGrupo) { componentesSelecionados.forEach(c => { if(!c.locked){ c.x = Math.round(c.x / 12) * 12; c.y = Math.round(c.y / 12) * 12; } }); atualizarMenuFlutuante(); } arrastandoGrupo = false; nóArrastado = null; atualizarTela();
+        });
+
+        canvas.addEventListener('dblclick', (e) => { if(ferramentaAtual !== 'mover') return; const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y; for (let i = componentes.length - 1; i >= 0; i--) { let c = componentes[i]; if (c.isTexto && wx >= c.x && wx <= c.x + c.width && wy >= c.y && wy <= c.y + c.height) { abrirModalTexto(c); break; } } });
+
+        function limparSimulador(silent = false) { 
+            componentes = []; fios = []; fioManipulado = null; terminalAtivo = null; componentesSelecionados.clear(); atualizarMenuFlutuante(); fecharMenuFio(); atualizarTela(); 
+            salvarEstado(); 
+            if(!silent) mostrarAviso('Área de trabalho limpa.', 'info');
+        }
+        
+        function exportarProjeto(tipo) { 
+            let bounds = {minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity}; 
+            [...componentes, ...fios].forEach(item => { if(item instanceof Componente) { bounds.minX = Math.min(bounds.minX, item.x); bounds.minY = Math.min(bounds.minY, item.y); bounds.maxX = Math.max(bounds.maxX, item.x + item.width); bounds.maxY = Math.max(bounds.maxY, item.y + item.height); } else { item.obterCaminho().forEach(p => { bounds.minX = Math.min(bounds.minX, p.x); bounds.minY = Math.min(bounds.minY, p.y); bounds.maxX = Math.max(bounds.maxX, p.x); bounds.maxY = Math.max(bounds.maxY, p.y); }); } }); 
+            if(bounds.minX === Infinity) bounds = {minX:0, minY:0, maxX: canvas.width, maxY: canvas.height}; 
+            let pad = 50; let bw = bounds.maxX - bounds.minX + pad*2; let bh = bounds.maxY - bounds.minY + pad*2; 
+            const tC = document.createElement('canvas'); tC.width = bw; tC.height = bh; const tCtx = tC.getContext('2d'); 
+            
+            if(tipo !== 'png') { tCtx.fillStyle = '#ffffff'; tCtx.fillRect(0,0, tC.width, tC.height); }
+            else { tCtx.clearRect(0,0, tC.width, tC.height); }
+
+            tCtx.save(); tCtx.translate(-bounds.minX + pad, -bounds.minY + pad); 
+            fios.filter(f => f.z === 'fundo').forEach(f => f.desenhar(tCtx)); 
+            componentes.filter(c => c.cat && c.cat.familia === 'trilho').forEach(c => c.desenhar(tCtx)); 
+            componentes.filter(c => !c.cat || c.cat.familia !== 'trilho').forEach(c => c.desenhar(tCtx)); 
+            fios.filter(f => f.z === 'frente').forEach(f => f.desenhar(tCtx)); 
+            tCtx.restore(); 
+            
+            if(tipo === 'pdf') { const { jsPDF } = window.jspdf; const doc = new jsPDF({ orientation: bw > bh ? 'l' : 'p', unit: 'px', format: [bw, bh] }); doc.addImage(tC.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, bw, bh); doc.save('Painel_Eletrico.pdf'); } 
+            else { const link = document.createElement('a'); link.download = `Painel_Eletrico.${tipo}`; link.href = tC.toDataURL(`image/${tipo === 'jpg' ? 'jpeg' : 'png'}`); link.click(); } 
+            fecharExport(); 
+            mostrarAviso(`Projeto exportado como ${tipo.toUpperCase()}`, 'sucesso');
+        }
+
+        salvarEstado(); atualizarTela(); updateDpadOpacity();
+        
+        initData();
+        checkSession();
+    </script>
+</body>
+</html>
