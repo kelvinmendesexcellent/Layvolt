@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Simulador Elétrico Pro - Engine Industrial</title>
+    <title>Layvolt - Realistic Electrical Panels</title>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
+    <!-- Firebase SDK Compat -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
     <style>
@@ -16,8 +18,15 @@
 
         :root {
             --bg-color: #f3f4f6; --surface-color: rgba(255, 255, 255, 0.9); --border-color: #e5e7eb;
-            --text-color: #111827; --text-muted: #6b7280; --primary: #4f46e5; --primary-hover: #4338ca;
-            --danger: #ef4444; --active-bg: #e0e7ff; --active-color: #4f46e5;
+            --text-color: #111827; --text-muted: #6b7280; 
+            
+            /* Paleta Layvolt */
+            --primary: #f5a623; 
+            --primary-hover: #d97706; 
+            --danger: #ef4444; 
+            --active-bg: #fef3c7; 
+            --active-color: #d97706;
+
             --shadow-sm: 0 1px 2px rgba(0,0,0,0.05); --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
             --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.1); --shadow-floating: 0 8px 32px rgba(0, 0, 0, 0.08);
             --modal-backdrop: rgba(17, 24, 39, 0.7);
@@ -40,12 +49,12 @@
         .bottom-dock > * { flex-shrink: 0; }
         .divider { width: 1px; height: 32px; background-color: var(--border-color); margin: 0 4px; }
 
-        .btn-fab { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white; border: none; width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); transition: transform 0.2s; }
+        .btn-fab { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: #111827; border: none; width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; box-shadow: 0 4px 12px rgba(245, 166, 35, 0.3); transition: transform 0.2s; }
         .btn-fab:hover { transform: scale(1.05); } .btn-fab:active { transform: scale(0.95); }
 
         .tool-btn { background: transparent; color: var(--text-muted); border: none; width: 44px; height: 44px; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; transition: all 0.2s ease; position: relative; }
         .tool-btn:hover { background: rgba(0,0,0,0.04); color: var(--text-color); }
-        .tool-btn.active { background: var(--active-bg); color: var(--active-color); box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.2); }
+        .tool-btn.active { background: var(--active-bg); color: var(--active-color); box-shadow: inset 0 0 0 1px rgba(245, 166, 35, 0.2); }
         .tool-btn.danger { color: var(--danger); background: #fef2f2; }
         .tool-btn.danger:hover { background: #fee2e2; }
         .tool-btn.admin { color: #10b981; background: #ecfdf5; }
@@ -59,7 +68,7 @@
         .tool-btn:hover::after { opacity: 1; transform: translateY(0); }
 
         .quick-settings { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.5); padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border-color); }
-        select, input[type="color"], input[type="text"], input[type="number"], input[type="password"] { border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: #fff; color: var(--text-color); font-family: 'Inter'; font-size: 13px; font-weight: 500; outline: none; }
+        select, input[type="color"], input[type="text"], input[type="number"], input[type="password"], input[type="email"] { border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: #fff; color: var(--text-color); font-family: 'Inter'; font-size: 13px; font-weight: 500; outline: none; }
         input[type="color"] { width: 26px; height: 26px; padding: 0; border-radius: 50%; overflow: hidden; border: none; cursor: pointer;}
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; } input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border-color); border-radius: 50%; }
 
@@ -76,7 +85,7 @@
         .dpad-btn { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px; font-size: 24px; color: var(--text-color); display: flex; justify-content: center; align-items: center; box-shadow: var(--shadow-sm); cursor: pointer; transition: all 0.1s; }
         .dpad-btn:active { background: var(--active-bg); color: var(--primary); transform: scale(0.95); }
         .dpad-btn.up { grid-column: 2; grid-row: 1; } .dpad-btn.left { grid-column: 1; grid-row: 2; }
-        .dpad-btn.ok { grid-column: 2; grid-row: 2; background: var(--primary); color: white; border: none; } .dpad-btn.right { grid-column: 3; grid-row: 2; } .dpad-btn.down { grid-column: 2; grid-row: 3; }
+        .dpad-btn.ok { grid-column: 2; grid-row: 2; background: var(--primary); color: #111827; border: none; } .dpad-btn.right { grid-column: 3; grid-row: 2; } .dpad-btn.down { grid-column: 2; grid-row: 3; }
         .dpad-controls-bottom { margin-top: 16px; display: flex; align-items: center; gap: 8px; justify-content: center; transition: opacity 0.1s; }
         .dpad-controls-bottom input[type=range] { width: 80px; accent-color: var(--primary); }
         .dpad-controls-bottom span { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; transition: opacity 0.1s; }
@@ -102,13 +111,18 @@
         .auth-title { font-size: 28px; font-weight: 800; color: var(--text-color); margin: 0 0 8px 0; letter-spacing: -0.5px; }
         .auth-subtitle { font-size: 15px; color: var(--text-muted); margin: 0 0 32px 0; }
         .auth-input-group { display: flex; align-items: center; background: #f9fafb; border: 2px solid #f3f4f6; border-radius: 14px; padding: 0 16px; margin-bottom: 20px; transition: all 0.2s; position: relative; }
-        .auth-input-group:focus-within { border-color: var(--primary); background: #ffffff; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+        .auth-input-group:focus-within { border-color: var(--primary); background: #ffffff; box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.15); }
         .auth-input-group i.left-icon { color: #9ca3af; font-size: 22px; margin-right: 12px; flex-shrink: 0; }
         .auth-input-group i.right-icon { color: #9ca3af; font-size: 22px; margin-left: 12px; flex-shrink: 0; cursor: pointer; transition: color 0.2s; }
         .auth-input-group i.right-icon:hover { color: var(--text-color); }
         .auth-input { width: 100%; padding: 18px 0; border: none; background: transparent; font-size: 16px; color: var(--text-color); font-weight: 500; outline: none; }
-        .auth-btn { width: 100%; padding: 18px; border-radius: 14px; background: var(--primary); color: white; font-size: 16px; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); margin-top: 8px; letter-spacing: 0.5px; }
-        .auth-btn:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3); }
+        
+        .auth-btn { width: 100%; padding: 18px; border-radius: 14px; background: var(--primary); color: #111827; font-size: 16px; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(245, 166, 35, 0.2); margin-top: 8px; letter-spacing: 0.5px; }
+        .auth-btn:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(245, 166, 35, 0.3); }
+        
+        .auth-btn-google { width: 100%; padding: 16px; border-radius: 14px; background: #ffffff; color: #374151; font-size: 15px; font-weight: 600; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; }
+        .auth-btn-google:hover { background: #f9fafb; border-color: #d1d5db; }
+
         .auth-switch { margin-top: 24px; font-size: 15px; color: var(--text-muted); }
         .auth-switch a { color: var(--primary); font-weight: 600; cursor: pointer; text-decoration: none; transition: color 0.2s; }
         .auth-switch a:hover { color: var(--primary-hover); text-decoration: underline; }
@@ -132,7 +146,7 @@
         .modal-header { padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 16px; align-items: center; justify-content: space-between; background: #f9fafb; flex-wrap: wrap;}
         .modal-title { margin: 0; color: var(--text-color); font-size: 20px; font-weight: 600; flex-shrink: 0; }
         .search-bar { flex: 1; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-color); background: #fff; color: var(--text-color); font-size: 14px; outline: none; transition: all 0.2s; }
-        .search-bar:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+        .search-bar:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15); }
         
         .catalog-container { overflow-y: auto; flex: 1; background: #fafafa; padding: 24px; min-height: 200px; }
         .category-group { margin-bottom: 32px; }
@@ -148,7 +162,7 @@
         .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; background: #fff; gap: 10px;}
         .btn-close { background: var(--bg-color); border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; color: var(--text-color); transition: background 0.2s; }
         .btn-close:hover { background: #e5e7eb; }
-        .btn-confirm { background: var(--primary); color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-confirm { background: var(--primary); color: #111827; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
         .btn-confirm:hover { background: var(--primary-hover); }
 
         #modalTextPrompt .modal-content, #modalConfirmClear .modal-content { max-width: 420px; }
@@ -160,7 +174,7 @@
         #modalExport .modal-content { max-width: 480px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.5); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
         .export-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 10px;}
         .export-btn { background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.4)); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.8); border-radius: 16px; padding: 24px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.3s ease; color: var(--text-color); font-weight: 700; font-size: 16px; }
-        .export-btn:hover { transform: translateY(-5px); box-shadow: 0 12px 40px rgba(79, 70, 229, 0.15); border-color: var(--primary); color: var(--primary); }
+        .export-btn:hover { transform: translateY(-5px); box-shadow: 0 12px 40px rgba(245, 166, 35, 0.15); border-color: var(--primary); color: var(--primary); }
 
         #modalCreator .modal-content { max-width: 600px; }
         .creator-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;}
@@ -175,7 +189,7 @@
         .toast { background: #fff; color: var(--text-color); padding: 14px 24px; border-radius: 12px; box-shadow: var(--shadow-lg); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 12px; animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; border: 1px solid var(--border-color); border-left: 5px solid var(--primary); }
         .toast.erro { border-left-color: var(--danger); }
         .toast.sucesso { border-left-color: #10b981; }
-        .toast.info { border-left-color: #3b82f6; }
+        .toast.info { border-left-color: var(--primary); }
         @keyframes slideDown { 0% { opacity: 0; transform: translateY(-20px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes fadeOut { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.95); } }
     </style>
@@ -184,33 +198,41 @@
 
     <div id="toastContainer"></div>
 
+    <!-- TELA DE AUTENTICAÇÃO -->
     <div id="authScreen">
         <div class="auth-box" id="loginBox">
             <h2 class="auth-title">Entrar</h2>
             <p class="auth-subtitle">Acesse o Layvolt</p>
+            
             <div class="auth-input-group">
-                <i class="ph ph-user left-icon"></i>
-                <input type="text" id="loginUser" class="auth-input" placeholder="Usuário" autocomplete="off">
+                <i class="ph ph-envelope left-icon"></i>
+                <input type="email" id="loginUser" class="auth-input" placeholder="E-mail" autocomplete="off">
             </div>
             <div class="auth-input-group">
                 <i class="ph ph-lock-key left-icon"></i>
                 <input type="password" id="loginPass" class="auth-input" placeholder="Senha" onkeypress="if(event.key==='Enter') fazerLogin()">
                 <i class="ph ph-eye right-icon" onclick="togglePassword('loginPass', this)" title="Mostrar/Ocultar Senha"></i>
             </div>
+            
             <button class="auth-btn" onclick="fazerLogin()">Acessar</button>
+            <button class="auth-btn-google" onclick="fazerLoginGoogle()">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 18px;">
+                Entrar com Google
+            </button>
             <div class="auth-switch">Não tem uma conta? <a onclick="mudarAuthView('register')">Criar agora</a></div>
         </div>
 
         <div class="auth-box" id="registerBox" style="display: none;">
             <h2 class="auth-title">Criar Conta</h2>
-            <p class="auth-subtitle">Sua conta precisará de aprovação</p>
+            <p class="auth-subtitle">Verifique seu e-mail para aprovação automática</p>
+            
             <div class="auth-input-group">
-                <i class="ph ph-user left-icon"></i>
-                <input type="text" id="regUser" class="auth-input" placeholder="Novo Usuário" autocomplete="off">
+                <i class="ph ph-envelope left-icon"></i>
+                <input type="email" id="regUser" class="auth-input" placeholder="Seu E-mail" autocomplete="off">
             </div>
             <div class="auth-input-group">
                 <i class="ph ph-lock-key left-icon"></i>
-                <input type="password" id="regPass" class="auth-input" placeholder="Senha">
+                <input type="password" id="regPass" class="auth-input" placeholder="Senha (Mín 6 caracteres)">
                 <i class="ph ph-eye right-icon" onclick="togglePassword('regPass', this)" title="Mostrar/Ocultar Senha"></i>
             </div>
             <div class="auth-input-group">
@@ -218,11 +240,13 @@
                 <input type="password" id="regPassConf" class="auth-input" placeholder="Confirmar Senha" onkeypress="if(event.key==='Enter') fazerRegistro()">
                 <i class="ph ph-eye right-icon" onclick="togglePassword('regPassConf', this)" title="Mostrar/Ocultar Senha"></i>
             </div>
+            
             <button class="auth-btn" onclick="fazerRegistro()">Registrar</button>
             <div class="auth-switch">Já possui uma conta? <a onclick="mudarAuthView('login')">Entrar</a></div>
         </div>
     </div>
 
+    <!-- PAINEL DESENVOLVEDOR -->
     <div id="modalAdmin" class="modal-overlay">
         <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header">
@@ -231,7 +255,7 @@
             </div>
             <div class="modal-body" style="padding: 0; max-height: 60vh; overflow-y: auto;">
                 <table class="data-table">
-                    <thead><tr><th>Usuário</th><th>Status</th><th style="text-align: right;">Ações</th></tr></thead>
+                    <thead><tr><th>Usuário / E-mail</th><th>Status</th><th style="text-align: right;">Ações</th></tr></thead>
                     <tbody id="adminTableBody"></tbody>
                 </table>
             </div>
@@ -239,6 +263,7 @@
         </div>
     </div>
 
+    <!-- PAINEL DE PROJETOS SALVOS -->
     <div id="modalProjects" class="modal-overlay">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
@@ -288,29 +313,38 @@
         <button id="btnFloatEdit" class="float-action-btn" onclick="abrirModalTexto(componentesSelecionados.values().next().value)" style="display:none;" title="Editar Texto"><i class="ph ph-pencil"></i></button>
     </div>
 
+    <!-- TOOLBAR INFERIOR -->
     <div class="bottom-dock">
         <button id="btnPainelAdmin" class="tool-btn admin" style="display:none;" onclick="abrirAdminModal()" data-tooltip="Gerenciar Usuários"><i class="ph ph-users-three"></i></button>
         <div class="divider" id="divAdmin" style="display:none;"></div>
+
         <button class="btn-fab" onclick="abrirModal()" title="Catálogo"><i class="ph ph-list-magnifying-glass"></i></button>
+        
         <div class="divider" id="divHistory" style="display:none"></div>
         <button id="btnUndo" class="tool-btn history-btn" onclick="desfazer()" data-tooltip="Desfazer Ação"><i class="ph ph-arrow-u-up-left"></i></button>
         <button id="btnRedo" class="tool-btn history-btn" onclick="refazer()" data-tooltip="Refazer Ação"><i class="ph ph-arrow-u-up-right"></i></button>
+        
         <div class="divider"></div>
+        
         <button id="btnMover" class="tool-btn active" onclick="setFerramenta('mover')" data-tooltip="Modo de Seleção Inteligente"><i id="selectModeIcon" class="ph ph-cursor"></i></button>
         <button id="btnFioMain" class="tool-btn" onclick="toggleWireMenu()" data-tooltip="Ferramentas de Fio"><i class="ph ph-bezier-curve"></i></button>
         <button id="btnTexto" class="tool-btn" onclick="abrirModalTexto(null)" data-tooltip="Adicionar Texto"><i class="ph ph-text-t"></i></button>
+        
         <div class="divider"></div>
         <div class="quick-settings"><input type="color" id="corFio" value="#ef4444" title="Cor padrão do fio"></div>
         <button id="btnDeleteSelectedToolbar" class="tool-btn danger" style="display:none;" onclick="deletarSelecionados()" data-tooltip="Deletar Selecionado"><i class="ph ph-trash"></i></button>
         <div class="divider"></div>
+        
         <button class="tool-btn action" onclick="salvarProjeto()" data-tooltip="Salvar Projeto"><i class="ph ph-floppy-disk"></i></button>
         <button class="tool-btn action" onclick="abrirModalProjetos()" data-tooltip="Projetos Salvos"><i class="ph ph-folder-open"></i></button>
         <button class="tool-btn" onclick="abrirExport()" data-tooltip="Exportar Imagem/PDF"><i class="ph ph-download-simple"></i></button>
         <button class="tool-btn danger" onclick="abrirModalConfirmarLimpeza()" data-tooltip="Limpar Tela"><i class="ph ph-eraser"></i></button>
+        
         <div class="divider"></div>
         <button class="tool-btn" onclick="fazerLogout(false)" data-tooltip="Sair"><i class="ph ph-sign-out"></i></button>
     </div>
 
+    <!-- MENU FIO -->
     <div id="wirePropMenu">
         <div id="wirePropHeader"><div class="prop-title">Propriedades do Fio</div><i class="ph ph-dots-six" style="color: var(--text-muted); font-size: 18px;"></i></div>
         <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -321,6 +355,7 @@
         </div>
     </div>
 
+    <!-- MODAL CATÁLOGO -->
     <div id="modalAdd" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -340,6 +375,7 @@
         </div>
     </div>
 
+    <!-- MODAL CRIAR CUSTOM -->
     <div id="modalCreator" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header"><h2 class="modal-title">Novo Componente</h2></div>
@@ -360,7 +396,7 @@
                 </div>
                 <div class="help-text">2. Clique na imagem para definir os conectores (bornes) de fio.</div>
                 <div style="display:flex; justify-content: space-between; align-items:center; background: #e5e7eb; padding: 10px; border-radius: 8px;">
-                    <span id="terminalCount" style="font-size: 14px; font-weight: 600; color: var(--primary);">Terminais marcados: 0</span>
+                    <span id="terminalCount" style="font-size: 14px; font-weight: 600; color: var(--text-color);">Terminais marcados: 0</span>
                     <button class="btn-close" onclick="limparBornesCustom()" style="padding: 6px 12px; font-size:12px; background: #fff;">Desfazer</button>
                 </div>
             </div>
@@ -371,6 +407,7 @@
         </div>
     </div>
 
+    <!-- Modais Genéricos Extras -->
     <div id="modalTextPrompt" class="modal-overlay">
         <div class="modal-content" style="max-width: 420px;">
             <div class="modal-header"><h2 class="modal-title" id="textPromptTitle">Texto</h2></div>
@@ -418,6 +455,7 @@
     </div>
 
     <script>
+        // --- INICIALIZAÇÃO FIREBASE ROBUSTA (V10 COMPAT) ---
         let db = null; let isFirebaseOnline = false;
         try {
             const firebaseConfig = { apiKey: "AIzaSyAianv3aK19_Qk_wF_NtDgDYUKJCQXwB2A", authDomain: "aplicativoeletrica.firebaseapp.com", databaseURL: "https://aplicativoeletrica-default-rtdb.firebaseio.com", projectId: "aplicativoeletrica", storageBucket: "aplicativoeletrica.firebasestorage.app", messagingSenderId: "714803968526", appId: "1:714803968526:web:d9846b7c66f164637ada5f" };
@@ -492,19 +530,73 @@
         function togglePassword(inputId, iconEl) { const input = document.getElementById(inputId); if (input.type === 'password') { input.type = 'text'; iconEl.classList.remove('ph-eye'); iconEl.classList.add('ph-eye-slash'); } else { input.type = 'password'; iconEl.classList.remove('ph-eye-slash'); iconEl.classList.add('ph-eye'); } }
         
         function fazerLogin() {
-            const user = document.getElementById('loginUser').value.trim(); const pass = document.getElementById('loginPass').value;
-            if (!user || !pass) { mostrarAviso('Preencha todos os campos.', 'erro'); return; }
-            if (usersDB[user] && usersDB[user].pass === pass) {
-                if (usersDB[user].status === 'pending') { mostrarAviso('Sua conta ainda está aguardando aprovação.', 'erro'); } else if (usersDB[user].status === 'blocked') { mostrarAviso('Sua conta foi bloqueada.', 'erro'); } else { currentActiveUser = usersDB[user]; currentActiveUser.username = user; updateActivity(); entrarNoApp(); }
-            } else { mostrarAviso('Usuário ou senha incorretos.', 'erro'); }
+            const userOrEmail = document.getElementById('loginUser').value.trim(); const pass = document.getElementById('loginPass').value;
+            if (!userOrEmail || !pass) { mostrarAviso('Preencha todos os campos.', 'erro'); return; }
+
+            if (userOrEmail === 'DESENVOLVEDOR') {
+                if (usersDB['DESENVOLVEDOR'] && usersDB['DESENVOLVEDOR'].pass === pass) {
+                    currentActiveUser = usersDB['DESENVOLVEDOR']; currentActiveUser.username = 'DESENVOLVEDOR'; updateActivity(); entrarNoApp();
+                } else { mostrarAviso('Senha incorreta para DESENVOLVEDOR.', 'erro'); }
+                return;
+            }
+
+            if (isFirebaseOnline) {
+                firebase.auth().signInWithEmailAndPassword(userOrEmail, pass).then((userCredential) => {
+                    const user = userCredential.user;
+                    if (user.emailVerified) {
+                        let username = user.email.replace(/[\.\#\$\/\[\]]/g, "_");
+                        if (!usersDB[username]) { usersDB[username] = { email: user.email, role: 'user', status: 'approved' }; saveDBUsers(usersDB); } 
+                        else if (usersDB[username].status === 'blocked') { mostrarAviso('Sua conta foi bloqueada.', 'erro'); firebase.auth().signOut(); return; } 
+                        else if (usersDB[username].status === 'pending') { usersDB[username].status = 'approved'; saveDBUsers(usersDB); }
+                        currentActiveUser = usersDB[username]; currentActiveUser.username = username; updateActivity(); entrarNoApp();
+                    } else { mostrarAviso('Por favor, verifique seu e-mail antes de entrar.', 'erro'); firebase.auth().signOut(); }
+                }).catch((error) => {
+                    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') { mostrarAviso('E-mail ou senha incorretos.', 'erro'); } 
+                    else if (error.code === 'auth/invalid-email') { mostrarAviso('E-mail inválido.', 'erro'); } 
+                    else { mostrarAviso('Erro ao fazer login: ' + error.message, 'erro'); }
+                });
+            } else { mostrarAviso('Sistema offline. Login por e-mail indisponível.', 'erro'); }
+        }
+
+        function fazerLoginGoogle() {
+            if (!isFirebaseOnline) { mostrarAviso('Sistema offline.', 'erro'); return; }
+            const provider = new firebase.auth.GoogleAuthProvider();
+            firebase.auth().signInWithPopup(provider).then((result) => {
+                const user = result.user;
+                let username = user.email.replace(/[\.\#\$\/\[\]]/g, "_");
+                if (!usersDB[username]) { 
+                    usersDB[username] = { email: user.email, role: 'user', status: 'approved' }; 
+                    saveDBUsers(usersDB); 
+                } else if (usersDB[username].status === 'blocked') {
+                    mostrarAviso('Sua conta foi bloqueada.', 'erro'); firebase.auth().signOut(); return;
+                }
+                currentActiveUser = usersDB[username]; currentActiveUser.username = username; updateActivity(); entrarNoApp();
+            }).catch((error) => {
+                mostrarAviso('Erro no login com Google.', 'erro');
+            });
         }
 
         function fazerRegistro() {
-            const user = document.getElementById('regUser').value.trim(); const pass = document.getElementById('regPass').value; const conf = document.getElementById('regPassConf').value;
-            if (!user || !pass || !conf) { mostrarAviso('Preencha todos os campos.', 'erro'); return; }
+            const email = document.getElementById('regUser').value.trim(); const pass = document.getElementById('regPass').value; const conf = document.getElementById('regPassConf').value;
+            if (!email || !pass || !conf) { mostrarAviso('Preencha todos os campos.', 'erro'); return; }
             if (pass !== conf) { mostrarAviso('As senhas não coincidem.', 'erro'); return; }
-            if (usersDB[user]) { mostrarAviso('Este nome de usuário já existe.', 'erro'); return; }
-            usersDB[user] = { pass: pass, role: 'user', status: 'pending' }; saveDBUsers(usersDB); mostrarAviso('Conta criada! Aguarde aprovação do Desenvolvedor para entrar.', 'sucesso'); mudarAuthView('login');
+            if (pass.length < 6) { mostrarAviso('A senha deve ter pelo menos 6 caracteres.', 'erro'); return; }
+
+            if (isFirebaseOnline) {
+                firebase.auth().createUserWithEmailAndPassword(email, pass).then((userCredential) => {
+                    const user = userCredential.user;
+                    user.sendEmailVerification().then(() => {
+                        mostrarAviso('Conta criada! Verifique sua caixa de e-mail para liberar o acesso.', 'sucesso');
+                        let username = email.replace(/[\.\#\$\/\[\]]/g, "_");
+                        usersDB[username] = { email: email, role: 'user', status: 'pending' }; saveDBUsers(usersDB);
+                        firebase.auth().signOut(); mudarAuthView('login');
+                    }).catch((error) => { mostrarAviso('Erro ao enviar e-mail de verificação.', 'erro'); });
+                }).catch((error) => {
+                    if (error.code === 'auth/email-already-in-use') { mostrarAviso('Este e-mail já está cadastrado.', 'erro'); } 
+                    else if (error.code === 'auth/invalid-email') { mostrarAviso('Digite um e-mail válido.', 'erro'); } 
+                    else { mostrarAviso('Erro: ' + error.message, 'erro'); }
+                });
+            } else { mostrarAviso('Sistema offline. Cadastro indisponível.', 'erro'); }
         }
 
         function entrarNoApp() {
@@ -520,7 +612,14 @@
         }
 
         function fallbackLocalProjects() { if(!currentActiveUser) return; let allProj = JSON.parse(localStorage.getItem('sim_projects_local')) || {}; myProjectsDB = allProj[currentActiveUser.username] || {}; if(document.getElementById('modalProjects').style.display === 'flex') renderProjectsTable(); }
-        function fazerLogout(silent = false) { currentActiveUser = null; localStorage.removeItem('sim_session'); document.getElementById('authScreen').style.display = 'flex'; document.getElementById('canvasWrapper').classList.add('blurred'); setTimeout(() => document.getElementById('authScreen').style.opacity = '1', 10); mudarAuthView('login'); if(!silent) mostrarAviso('Sessão encerrada.', 'info'); }
+        
+        function fazerLogout(silent = false) { 
+            currentActiveUser = null; 
+            localStorage.removeItem('sim_session'); 
+            if(isFirebaseOnline) firebase.auth().signOut();
+            document.getElementById('authScreen').style.display = 'flex'; document.getElementById('canvasWrapper').classList.add('blurred'); setTimeout(() => document.getElementById('authScreen').style.opacity = '1', 10); mudarAuthView('login'); 
+            if(!silent) mostrarAviso('Sessão encerrada.', 'info'); 
+        }
         
         function abrirAdminModal() { renderAdminTable(); document.getElementById('modalAdmin').style.display = 'flex'; setTimeout(() => { document.getElementById('modalAdmin').style.opacity = '1'; }, 10); }
         function fecharAdminModal() { document.getElementById('modalAdmin').style.opacity = '0'; setTimeout(() => document.getElementById('modalAdmin').style.display = 'none', 300); }
@@ -529,9 +628,10 @@
             const tbody = document.getElementById('adminTableBody'); tbody.innerHTML = '';
             for (const [username, data] of Object.entries(usersDB)) {
                 if (username === 'DESENVOLVEDOR') continue; 
+                let displayUser = data.email ? data.email : username;
                 let statusBadge = ''; if (data.status === 'approved') statusBadge = '<span class="status-badge approved">Permitido</span>'; if (data.status === 'pending') statusBadge = '<span class="status-badge pending">Aguardando</span>'; if (data.status === 'blocked') statusBadge = '<span class="status-badge blocked">Bloqueado</span>';
                 let actionHtml = ''; if (data.status !== 'approved') actionHtml += `<button class="action-btn approve" onclick="alterarStatus('${username}', 'approved')" title="Permitir Acesso"><i class="ph ph-check-circle"></i></button>`; if (data.status !== 'blocked') actionHtml += `<button class="action-btn revoke" onclick="alterarStatus('${username}', 'blocked')" title="Remover Permissão"><i class="ph ph-prohibit"></i></button>`; actionHtml += `<button class="action-btn key" onclick="mudarSenhaUser('${username}')" title="Mudar Senha"><i class="ph ph-key"></i></button><button class="action-btn delete" onclick="excluirUser('${username}')" title="Excluir Usuário"><i class="ph ph-trash"></i></button>`;
-                tbody.innerHTML += `<tr><td style="font-weight: 600;">${username}</td><td>${statusBadge}</td><td style="text-align: right; white-space: nowrap;">${actionHtml}</td></tr>`;
+                tbody.innerHTML += `<tr><td style="font-weight: 600;">${displayUser}</td><td>${statusBadge}</td><td style="text-align: right; white-space: nowrap;">${actionHtml}</td></tr>`;
             }
             if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum usuário registrado além do DESENVOLVEDOR.</td></tr>';
         }
@@ -724,9 +824,9 @@
             desenhar(targetCtx = ctx, isThumb = false) {
                 targetCtx.save(); let isSelected = componentesSelecionados.has(this) && !isThumb; 
                 if(!isThumb && isSelected) { 
-                    targetCtx.strokeStyle = this.locked ? '#ef4444' : '#4f46e5'; targetCtx.lineWidth = 2; 
+                    targetCtx.strokeStyle = this.locked ? '#ef4444' : '#f5a623'; targetCtx.lineWidth = 2; 
                     let b = this.getBounds(); targetCtx.strokeRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4); 
-                    if (!this.locked && this.isCustom) { targetCtx.fillStyle = '#ffffff'; targetCtx.strokeStyle = '#4f46e5'; targetCtx.beginPath(); targetCtx.arc(b.x + b.w, b.y + b.h, 6/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); }
+                    if (!this.locked && this.isCustom) { targetCtx.fillStyle = '#ffffff'; targetCtx.strokeStyle = '#f5a623'; targetCtx.beginPath(); targetCtx.arc(b.x + b.w, b.y + b.h, 6/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); }
                 }
                 if(this.isTexto) { targetCtx.font = `600 ${this.textProp.size}px ${this.textProp.font}`; if(this.textProp.bg !== 'transparent') { targetCtx.fillStyle = this.textProp.bg; targetCtx.beginPath(); targetCtx.roundRect(this.x, this.y, this.width, this.height, 8); targetCtx.fill(); } targetCtx.fillStyle = this.textProp.color; targetCtx.textAlign = "center"; targetCtx.textBaseline = "middle"; targetCtx.fillText(this.nome, this.x + this.width/2, this.y + this.height/2); targetCtx.restore(); return; }
                 if(this.isCustom) { if(this.imgObj && this.imgObj.complete) { targetCtx.shadowColor = 'rgba(0,0,0,0.3)'; targetCtx.shadowBlur = 10; targetCtx.shadowOffsetY = 5; targetCtx.drawImage(this.imgObj, this.x, this.y, this.width, this.height); targetCtx.shadowColor = 'transparent'; } if(!isThumb) { this.terminais.forEach(t => { targetCtx.fillStyle = 'rgba(0,0,0,0.5)'; targetCtx.beginPath(); targetCtx.arc(this.x + t.x, this.y + t.y, 4, 0, Math.PI * 2); targetCtx.fill(); }); } targetCtx.restore(); return; }
@@ -748,13 +848,13 @@
             construirPath2D() { let path2d = new Path2D(); let path = this.obterCaminho(); if(path.length < 2) return path2d; path2d.moveTo(path[0].x, path[0].y); if (this.estilo === 'quadrado') { for(let i=1; i<path.length; i++) path2d.lineTo(path[i].x, path[i].y); } else { if(path.length === 2) { let cp1X = path[0].x; let cp1Y = path[0].y + (path[1].y - path[0].y)/2; let cp2X = path[1].x; let cp2Y = path[1].y - (path[1].y - path[0].y)/2; path2d.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, path[1].x, path[1].y); } else { for (let i = 1; i < path.length - 1; i++) { let xc = (path[i].x + path[i + 1].x) / 2; let yc = (path[i].y + path[i + 1].y) / 2; path2d.quadraticCurveTo(path[i].x, path[i].y, xc, yc); } path2d.lineTo(path[path.length - 1].x, path[path.length - 1].y); } } return path2d; }
             desenhar(targetCtx = ctx) { 
                 let path2d = this.construirPath2D(); let pathCoords = this.obterCaminho(); if(pathCoords.length < 2) return; targetCtx.save(); 
-                if(this === fioEditando || (this === fioAtual && desenhandoFio) || this === fioManipulado) { targetCtx.strokeStyle = '#4f46e5'; targetCtx.lineWidth = this.espessura + 12; targetCtx.lineCap = 'round'; targetCtx.lineJoin = 'round'; targetCtx.globalAlpha = 0.3; targetCtx.stroke(path2d); targetCtx.globalAlpha = 1.0; } 
+                if(this === fioEditando || (this === fioAtual && desenhandoFio) || this === fioManipulado) { targetCtx.strokeStyle = '#f5a623'; targetCtx.lineWidth = this.espessura + 12; targetCtx.lineCap = 'round'; targetCtx.lineJoin = 'round'; targetCtx.globalAlpha = 0.3; targetCtx.stroke(path2d); targetCtx.globalAlpha = 1.0; } 
                 targetCtx.lineCap = 'round'; targetCtx.lineJoin = 'round'; targetCtx.shadowColor = 'rgba(0,0,0,0.3)'; targetCtx.shadowBlur = 4; targetCtx.shadowOffsetY = 2; targetCtx.strokeStyle = '#111827'; targetCtx.lineWidth = this.espessura + 1; targetCtx.stroke(path2d); 
                 targetCtx.shadowColor = 'transparent'; targetCtx.strokeStyle = this.cor; targetCtx.lineWidth = this.espessura; targetCtx.stroke(path2d); targetCtx.strokeStyle = 'rgba(255,255,255,0.3)'; targetCtx.lineWidth = this.espessura * 0.3; targetCtx.stroke(path2d); 
                 if (this.cobreExposto && !this.destino) { targetCtx.fillStyle = '#b45309'; targetCtx.beginPath(); targetCtx.arc(pathCoords[pathCoords.length-1].x, pathCoords[pathCoords.length-1].y, this.espessura, 0, Math.PI*2); targetCtx.fill(); } 
                 if (this.cobreExposto && !this.origem) { targetCtx.fillStyle = '#b45309'; targetCtx.beginPath(); targetCtx.arc(pathCoords[0].x, pathCoords[0].y, this.espessura, 0, Math.PI*2); targetCtx.fill(); } 
-                if (ferramentaAtual === 'entortar' && targetCtx === ctx) { targetCtx.fillStyle = '#fff'; targetCtx.strokeStyle = '#4f46e5'; targetCtx.lineWidth = 2; this.pontos.forEach(p => { targetCtx.beginPath(); targetCtx.arc(p.x, p.y, 6/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); }); } 
-                if (this === fioManipulado && ferramentaAtual === 'mover' && targetCtx === ctx) { targetCtx.fillStyle = '#fff'; targetCtx.strokeStyle = '#4f46e5'; targetCtx.lineWidth = 2; targetCtx.beginPath(); targetCtx.arc(pathCoords[0].x, pathCoords[0].y, 8/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); targetCtx.beginPath(); targetCtx.arc(pathCoords[pathCoords.length-1].x, pathCoords[pathCoords.length-1].y, 8/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); } 
+                if (ferramentaAtual === 'entortar' && targetCtx === ctx) { targetCtx.fillStyle = '#fff'; targetCtx.strokeStyle = '#f5a623'; targetCtx.lineWidth = 2; this.pontos.forEach(p => { targetCtx.beginPath(); targetCtx.arc(p.x, p.y, 6/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); }); } 
+                if (this === fioManipulado && ferramentaAtual === 'mover' && targetCtx === ctx) { targetCtx.fillStyle = '#fff'; targetCtx.strokeStyle = '#f5a623'; targetCtx.lineWidth = 2; targetCtx.beginPath(); targetCtx.arc(pathCoords[0].x, pathCoords[0].y, 8/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); targetCtx.beginPath(); targetCtx.arc(pathCoords[pathCoords.length-1].x, pathCoords[pathCoords.length-1].y, 8/camera.zoom, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); } 
                 
                 if (pathCoords.length > 1) { 
                     if (this.origem) {
@@ -845,7 +945,6 @@
                 if(c.isTexto) novo.textProp = JSON.parse(JSON.stringify(c.textProp));
                 if(isGrouped) novo.groupId = newGroupId;
                 
-                // CRUCIAL: Recalcula a posição dos terminais baseados na altura/largura novas já clonadas
                 if (novo.isCustom && DB_CUSTOM[novo.nome]) { 
                     novo.terminais = (DB_CUSTOM[novo.nome].terminais || []).map(t => ({ 
                         px: t.px, py: t.py, x: t.px * novo.width, y: t.py * novo.height 
@@ -936,8 +1035,8 @@
 
             if (terminalAtivo && ferramentaAtual === 'fio' && !desenhandoFio) {
                 let tx = terminalAtivo.c.x + terminalAtivo.t.x; let ty = terminalAtivo.c.y + terminalAtivo.t.y;
-                ctx.save(); ctx.translate(tx, ty); ctx.fillStyle = '#4f46e5'; ctx.beginPath(); ctx.arc(0, 0, 16/camera.zoom, 0, Math.PI*2); ctx.globalAlpha = 0.3; ctx.fill(); ctx.globalAlpha = 1.0;
-                let s = 8/camera.zoom; let d = 26/camera.zoom; ctx.fillStyle = '#4f46e5';
+                ctx.save(); ctx.translate(tx, ty); ctx.fillStyle = '#f5a623'; ctx.beginPath(); ctx.arc(0, 0, 16/camera.zoom, 0, Math.PI*2); ctx.globalAlpha = 0.3; ctx.fill(); ctx.globalAlpha = 1.0;
+                let s = 8/camera.zoom; let d = 26/camera.zoom; ctx.fillStyle = '#f5a623';
                 ctx.beginPath(); ctx.moveTo(0, -d); ctx.lineTo(-s, -d+s); ctx.lineTo(s, -d+s); ctx.fill(); 
                 ctx.beginPath(); ctx.moveTo(0, d); ctx.lineTo(-s, d-s); ctx.lineTo(s, d-s); ctx.fill(); 
                 ctx.beginPath(); ctx.moveTo(-d, 0); ctx.lineTo(-d+s, -s); ctx.lineTo(-d+s, s); ctx.fill(); 
@@ -947,17 +1046,15 @@
             if (desenhandoFio && fioAtual) { 
                 let startX = fioAtual.origem ? fioAtual.origem.x + fioAtual.terminalOrigem.x : fioAtual.endX; let startY = fioAtual.origem ? fioAtual.origem.y + fioAtual.terminalOrigem.y : fioAtual.endY; 
                 if(fioAtual.pontos.length > 0 && !fioAtual.origem) { startX = fioAtual.pontos[0].x; startY = fioAtual.pontos[0].y; } 
-                ctx.beginPath(); ctx.arc(startX, startY, 12/camera.zoom, 0, Math.PI*2); ctx.fillStyle = 'rgba(79, 70, 229, 0.3)'; ctx.fill(); ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 2; ctx.stroke(); 
+                ctx.beginPath(); ctx.arc(startX, startY, 12/camera.zoom, 0, Math.PI*2); ctx.fillStyle = 'rgba(245, 166, 35, 0.3)'; ctx.fill(); ctx.strokeStyle = '#f5a623'; ctx.lineWidth = 2; ctx.stroke(); 
             } 
             ctx.restore(); 
-            
-            triggerAutoSave();
         }
 
         function dpadMove(dx, dy) { 
             const stepSize = 24; 
             if (ferramentaAtual === 'mover' && componentesSelecionados.size > 0) { 
-                salvarEstado(); componentesSelecionados.forEach(c => { if(!c.locked) { c.x += dx * stepSize; c.y += dy * stepSize; } }); atualizarMenuFlutuante(); atualizarTela(); 
+                salvarEstado(); componentesSelecionados.forEach(c => { if(!c.locked) { c.x += dx * stepSize; c.y += dy * stepSize; } }); atualizarMenuFlutuante(); atualizarTela(); triggerAutoSave();
             } else if (ferramentaAtual === 'fio' && (terminalAtivo || desenhandoFio)) {
                 if (!desenhandoFio && terminalAtivo) {
                     salvarEstado(); desenhandoFio = true; fecharMenuFio(); fioManipulado = null; componentesSelecionados.clear(); atualizarMenuFlutuante();
@@ -975,19 +1072,19 @@
 
         function dpadConfirm() { 
             if (ferramentaAtual === 'mover' && componentesSelecionados.size > 0) { 
-                componentesSelecionados.clear(); atualizarMenuFlutuante(); atualizarDpadVisibility(); atualizarTela(); 
+                componentesSelecionados.clear(); atualizarMenuFlutuante(); atualizarDpadVisibility(); atualizarTela(); triggerAutoSave();
             } else if (ferramentaAtual === 'fio' && desenhandoFio && fioAtual) {
                 let wx = fioAtual.endX; let wy = fioAtual.endY; let conectou = false;
                 for (let c of componentes) { for (let t of c.terminais) { if (Math.hypot(wx - (c.x + t.x), wy - (c.y + t.y)) < 30/camera.zoom && (c !== fioAtual.origem || t !== fioAtual.terminalOrigem)) { fioAtual.destino = c; fioAtual.terminalDestino = t; fioAtual.endX = c.x + t.x; fioAtual.endY = c.y + t.y; conectou = true; break; } } if (conectou) break; }
                 if (!conectou) { fioAtual.cobreExposto = true; } 
-                desenhandoFio = false; fioAtual = null; terminalAtivo = null; atualizarDpadVisibility(); atualizarBotoesHistorico(); atualizarTela();
+                desenhandoFio = false; fioAtual = null; terminalAtivo = null; atualizarDpadVisibility(); atualizarBotoesHistorico(); atualizarTela(); triggerAutoSave();
             }
         }
 
         function obterFioProximoPath2D(wx, wy) { for (let i = fios.length - 1; i >= 0; i--) { let f = fios[i]; let p2d = f.construirPath2D(); ctx.lineWidth = Math.max(f.espessura + 20, 30); ctx.lineCap = 'round'; ctx.save(); ctx.translate(camera.x, camera.y); ctx.scale(camera.zoom, camera.zoom); let isHit = ctx.isPointInStroke(p2d, wx * camera.zoom + camera.x, wy * camera.zoom + camera.y); ctx.restore(); if (isHit) { let pathCoords = f.obterCaminho(); let minDist = Infinity; let segIndex = 0; let hitPt = {x: wx, y: wy}; for(let j=0; j<pathCoords.length-1; j++) { let A = wx - pathCoords[j].x; let B = wy - pathCoords[j].y; let C = pathCoords[j+1].x - pathCoords[j].x; let D = pathCoords[j+1].y - pathCoords[j].y; let dot = A * C + B * D; let len_sq = C * C + D * D; let param = -1; if (len_sq != 0) param = dot / len_sq; let xx, yy; if (param < 0) { xx = pathCoords[j].x; yy = pathCoords[j].y; } else if (param > 1) { xx = pathCoords[j+1].x; yy = pathCoords[j+1].y; } else { xx = pathCoords[j].x + param * C; yy = pathCoords[j].y + param * D; } let dist = Math.hypot(wx - xx, wy - yy); if(dist < minDist) { minDist = dist; segIndex = j; hitPt = {x: xx, y: yy}; } } return { fio: f, pt: hitPt, segIndex: segIndex }; } } return null; }
         function abrirMenuFio(fio, sx, sy) { fioEditando = fio; let menu = document.getElementById('wirePropMenu'); document.getElementById('wireEditColor').value = fio.cor; document.getElementById('wireThick').value = fio.espessura; document.getElementById('wireStyle').value = fio.estilo; document.getElementById('wireZ').value = fio.z; menu.style.display = 'flex'; menu.style.left = Math.min(sx + 10, window.innerWidth - 240) + 'px'; menu.style.top = Math.min(sy + 10, window.innerHeight - 250) + 'px'; atualizarTela(); }
         function fecharMenuFio() { fioEditando = null; document.getElementById('wirePropMenu').style.display = 'none'; atualizarTela(); }
-        function atualizarFioSelecionado() { if(!fioEditando) return; salvarEstado(); fioEditando.cor = document.getElementById('wireEditColor').value; fioEditando.espessura = parseInt(document.getElementById('wireThick').value); fioEditando.estilo = document.getElementById('wireStyle').value; fioEditando.z = document.getElementById('wireZ').value; atualizarTela(); }
+        function atualizarFioSelecionado() { if(!fioEditando) return; salvarEstado(); fioEditando.cor = document.getElementById('wireEditColor').value; fioEditando.espessura = parseInt(document.getElementById('wireThick').value); fioEditando.estilo = document.getElementById('wireStyle').value; fioEditando.z = document.getElementById('wireZ').value; atualizarTela(); triggerAutoSave(); }
 
         canvas.addEventListener('pointerdown', (e) => {
             if(e.target.closest('#dpadControls') || e.target.closest('.bottom-dock') || e.target.closest('.zoom-dock')) return;
@@ -1014,7 +1111,7 @@
                     else { f2.pontos = [pt2, ...path.slice(hit.segIndex + 1)]; if (f2.pontos.length > 0) { f2.endX = f2.pontos[f2.pontos.length-1].x; f2.endY = f2.pontos[f2.pontos.length-1].y; } }
                     
                     fios.splice(fios.indexOf(f), 1); fios.push(f1, f2); 
-                    if(fioManipulado === f) fioManipulado = null; atualizarTela(); 
+                    if(fioManipulado === f) fioManipulado = null; atualizarTela(); triggerAutoSave();
                 } 
                 return; 
             }
@@ -1046,8 +1143,8 @@
                             if(!e.shiftKey) componentesSelecionados.clear(); 
                             componentesSelecionados.add(c); 
                             if(c.groupId) { componentes.forEach(gC => { if(gC.groupId === c.groupId) componentesSelecionados.add(gC); }); }
-                            componentes.splice(componentes.indexOf(c), 1); componentes.push(c); 
                         } 
+                        // AQUI ESTAVA O BUG DO CLICK TRAZER PRA FRENTE. Removido.
                         salvarEstado(); atualizarMenuFlutuante(); break; 
                     } 
                 }
@@ -1093,8 +1190,8 @@
 
         canvas.addEventListener('pointerup', (e) => {
             canvas.releasePointerCapture(e.pointerId); const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y;
-            if (isResizing) { isResizing = false; resizeTarget = null; atualizarMenuFlutuante(); atualizarTela(); return; }
-            if(isPanning) { isPanning = false; return; } if(handleArrasteFio) { handleArrasteFio = null; atualizarTela(); return; }
+            if (isResizing) { isResizing = false; resizeTarget = null; atualizarMenuFlutuante(); atualizarTela(); triggerAutoSave(); return; }
+            if(isPanning) { isPanning = false; triggerAutoSave(); return; } if(handleArrasteFio) { handleArrasteFio = null; atualizarTela(); triggerAutoSave(); return; }
             
             if (desenhandoFio && fioAtual) { 
                 let conectou = false; 
@@ -1102,9 +1199,10 @@
                 let snapped = false; if (!conectou) { let hitEnd = obterFioProximoPath2D(wx, wy); if (hitEnd && hitEnd.fio.tipoLinha === 'conduite' && fioAtual.tipoLinha !== 'conduite') { fioAtual.endX = hitEnd.pt.x; fioAtual.endY = hitEnd.pt.y; fioAtual.pontos.push({x: hitEnd.pt.x, y: hitEnd.pt.y}); conectou = true; snapped = true; } } 
                 if (!conectou && fioAtual.tipoLinha !== 'conduite') { fios.pop(); historico.pop(); } 
                 else if(!conectou && fioAtual.tipoLinha === 'conduite' && !snapped) { fioAtual.pontos.push({x: wx, y: wy}); } 
-                desenhandoFio = false; fioAtual = null; terminalAtivo = null; atualizarDpadVisibility(); atualizarBotoesHistorico(); atualizarTela(); 
+                desenhandoFio = false; fioAtual = null; terminalAtivo = null; atualizarDpadVisibility(); atualizarBotoesHistorico(); atualizarTela(); triggerAutoSave(); 
             }
             if (arrastandoGrupo) { componentesSelecionados.forEach(c => { if(!c.locked){ c.x = Math.round(c.x / 12) * 12; c.y = Math.round(c.y / 12) * 12; } }); atualizarMenuFlutuante(); } arrastandoGrupo = false; nóArrastado = null; atualizarTela();
+            triggerAutoSave();
         });
 
         canvas.addEventListener('dblclick', (e) => { if(ferramentaAtual !== 'mover') return; const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y; for (let i = componentes.length - 1; i >= 0; i--) { let c = componentes[i]; if (c.isTexto && wx >= c.x && wx <= c.x + c.width && wy >= c.y && wy <= c.y + c.height) { abrirModalTexto(c); break; } } });
