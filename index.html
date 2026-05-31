@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Layvolt - Realistic Electrical Panels</title>
+    <title>Simulador Elétrico Pro - Engine Industrial</title>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
@@ -198,7 +198,6 @@
 
     <div id="toastContainer"></div>
 
-    <!-- TELA DE AUTENTICAÇÃO -->
     <div id="authScreen">
         <div class="auth-box" id="loginBox">
             <h2 class="auth-title">Entrar</h2>
@@ -242,6 +241,10 @@
             </div>
             
             <button class="auth-btn" onclick="fazerRegistro()">Registrar</button>
+            <button class="auth-btn-google" onclick="fazerLoginGoogle()">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 18px;">
+                Registrar com Google
+            </button>
             <div class="auth-switch">Já possui uma conta? <a onclick="mudarAuthView('login')">Entrar</a></div>
         </div>
     </div>
@@ -317,29 +320,22 @@
     <div class="bottom-dock">
         <button id="btnPainelAdmin" class="tool-btn admin" style="display:none;" onclick="abrirAdminModal()" data-tooltip="Gerenciar Usuários"><i class="ph ph-users-three"></i></button>
         <div class="divider" id="divAdmin" style="display:none;"></div>
-
         <button class="btn-fab" onclick="abrirModal()" title="Catálogo"><i class="ph ph-list-magnifying-glass"></i></button>
-        
         <div class="divider" id="divHistory" style="display:none"></div>
         <button id="btnUndo" class="tool-btn history-btn" onclick="desfazer()" data-tooltip="Desfazer Ação"><i class="ph ph-arrow-u-up-left"></i></button>
         <button id="btnRedo" class="tool-btn history-btn" onclick="refazer()" data-tooltip="Refazer Ação"><i class="ph ph-arrow-u-up-right"></i></button>
-        
         <div class="divider"></div>
-        
         <button id="btnMover" class="tool-btn active" onclick="setFerramenta('mover')" data-tooltip="Modo de Seleção Inteligente"><i id="selectModeIcon" class="ph ph-cursor"></i></button>
         <button id="btnFioMain" class="tool-btn" onclick="toggleWireMenu()" data-tooltip="Ferramentas de Fio"><i class="ph ph-bezier-curve"></i></button>
         <button id="btnTexto" class="tool-btn" onclick="abrirModalTexto(null)" data-tooltip="Adicionar Texto"><i class="ph ph-text-t"></i></button>
-        
         <div class="divider"></div>
         <div class="quick-settings"><input type="color" id="corFio" value="#ef4444" title="Cor padrão do fio"></div>
         <button id="btnDeleteSelectedToolbar" class="tool-btn danger" style="display:none;" onclick="deletarSelecionados()" data-tooltip="Deletar Selecionado"><i class="ph ph-trash"></i></button>
         <div class="divider"></div>
-        
         <button class="tool-btn action" onclick="salvarProjeto()" data-tooltip="Salvar Projeto"><i class="ph ph-floppy-disk"></i></button>
         <button class="tool-btn action" onclick="abrirModalProjetos()" data-tooltip="Projetos Salvos"><i class="ph ph-folder-open"></i></button>
         <button class="tool-btn" onclick="abrirExport()" data-tooltip="Exportar Imagem/PDF"><i class="ph ph-download-simple"></i></button>
         <button class="tool-btn danger" onclick="abrirModalConfirmarLimpeza()" data-tooltip="Limpar Tela"><i class="ph ph-eraser"></i></button>
-        
         <div class="divider"></div>
         <button class="tool-btn" onclick="fazerLogout(false)" data-tooltip="Sair"><i class="ph ph-sign-out"></i></button>
     </div>
@@ -355,7 +351,6 @@
         </div>
     </div>
 
-    <!-- MODAL CATÁLOGO -->
     <div id="modalAdd" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -375,7 +370,6 @@
         </div>
     </div>
 
-    <!-- MODAL CRIAR CUSTOM -->
     <div id="modalCreator" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header"><h2 class="modal-title">Novo Componente</h2></div>
@@ -455,7 +449,6 @@
     </div>
 
     <script>
-        // --- INICIALIZAÇÃO FIREBASE ROBUSTA (V10 COMPAT) ---
         let db = null; let isFirebaseOnline = false;
         try {
             const firebaseConfig = { apiKey: "AIzaSyAianv3aK19_Qk_wF_NtDgDYUKJCQXwB2A", authDomain: "aplicativoeletrica.firebaseapp.com", databaseURL: "https://aplicativoeletrica-default-rtdb.firebaseio.com", projectId: "aplicativoeletrica", storageBucket: "aplicativoeletrica.firebasestorage.app", messagingSenderId: "714803968526", appId: "1:714803968526:web:d9846b7c66f164637ada5f" };
@@ -561,6 +554,8 @@
         function fazerLoginGoogle() {
             if (!isFirebaseOnline) { mostrarAviso('Sistema offline.', 'erro'); return; }
             const provider = new firebase.auth.GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+            
             firebase.auth().signInWithPopup(provider).then((result) => {
                 const user = result.user;
                 let username = user.email.replace(/[\.\#\$\/\[\]]/g, "_");
@@ -572,7 +567,9 @@
                 }
                 currentActiveUser = usersDB[username]; currentActiveUser.username = username; updateActivity(); entrarNoApp();
             }).catch((error) => {
-                mostrarAviso('Erro no login com Google.', 'erro');
+                if (error.code !== 'auth/popup-closed-by-user') {
+                    mostrarAviso('Erro no login com Google: ' + error.message, 'erro');
+                }
             });
         }
 
@@ -1144,7 +1141,6 @@
                             componentesSelecionados.add(c); 
                             if(c.groupId) { componentes.forEach(gC => { if(gC.groupId === c.groupId) componentesSelecionados.add(gC); }); }
                         } 
-                        // AQUI ESTAVA O BUG DO CLICK TRAZER PRA FRENTE. Removido.
                         salvarEstado(); atualizarMenuFlutuante(); break; 
                     } 
                 }
