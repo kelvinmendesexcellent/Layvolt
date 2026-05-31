@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Simulador Elétrico Pro - Engine Industrial</title>
+    <title>Layvolt - Realistic Electrical Panels</title>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
-    <!-- Firebase SDK Compat -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
@@ -57,8 +56,6 @@
         .tool-btn.active { background: var(--active-bg); color: var(--active-color); box-shadow: inset 0 0 0 1px rgba(245, 166, 35, 0.2); }
         .tool-btn.danger { color: var(--danger); background: #fef2f2; }
         .tool-btn.danger:hover { background: #fee2e2; }
-        .tool-btn.admin { color: #10b981; background: #ecfdf5; }
-        .tool-btn.admin:hover { background: #d1fae5; }
         .tool-btn.action { color: #3b82f6; background: #eff6ff; }
         .tool-btn.action:hover { background: #dbeafe; }
         
@@ -131,16 +128,9 @@
         .data-table th, .data-table td { padding: 14px; text-align: left; border-bottom: 1px solid var(--border-color); }
         .data-table th { background: #f9fafb; font-weight: 600; color: var(--text-muted); text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; position: sticky; top: 0;}
         .data-table tr:hover { background: rgba(0,0,0,0.02); }
-        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
-        .status-badge.approved { background: #d1fae5; color: #065f46; }
-        .status-badge.pending { background: #fef3c7; color: #92400e; }
-        .status-badge.blocked { background: #fee2e2; color: #991b1b; }
         .action-btn { background: transparent; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); transition: color 0.2s; padding: 4px; }
         .action-btn:hover { color: var(--text-color); }
-        .action-btn.approve:hover { color: #10b981; }
-        .action-btn.revoke:hover { color: #f59e0b; }
         .action-btn.delete:hover { color: var(--danger); }
-        .action-btn.key:hover { color: var(--primary); }
         .action-btn.load:hover { color: var(--primary); }
 
         .modal-header { padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 16px; align-items: center; justify-content: space-between; background: #f9fafb; flex-wrap: wrap;}
@@ -241,32 +231,10 @@
             </div>
             
             <button class="auth-btn" onclick="fazerRegistro()">Registrar</button>
-            <button class="auth-btn-google" onclick="fazerLoginGoogle()">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 18px;">
-                Registrar com Google
-            </button>
             <div class="auth-switch">Já possui uma conta? <a onclick="mudarAuthView('login')">Entrar</a></div>
         </div>
     </div>
 
-    <!-- PAINEL DESENVOLVEDOR -->
-    <div id="modalAdmin" class="modal-overlay">
-        <div class="modal-content" style="max-width: 700px;">
-            <div class="modal-header">
-                <h2 class="modal-title">Gerenciar Acessos</h2>
-                <div style="color: var(--text-muted); font-size: 14px; font-weight: 600;"><i class="ph ph-shield-check"></i> Modo Desenvolvedor</div>
-            </div>
-            <div class="modal-body" style="padding: 0; max-height: 60vh; overflow-y: auto;">
-                <table class="data-table">
-                    <thead><tr><th>Usuário / E-mail</th><th>Status</th><th style="text-align: right;">Ações</th></tr></thead>
-                    <tbody id="adminTableBody"></tbody>
-                </table>
-            </div>
-            <div class="modal-footer"><button class="btn-close" onclick="fecharAdminModal()">Fechar</button></div>
-        </div>
-    </div>
-
-    <!-- PAINEL DE PROJETOS SALVOS -->
     <div id="modalProjects" class="modal-overlay">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
@@ -316,10 +284,7 @@
         <button id="btnFloatEdit" class="float-action-btn" onclick="abrirModalTexto(componentesSelecionados.values().next().value)" style="display:none;" title="Editar Texto"><i class="ph ph-pencil"></i></button>
     </div>
 
-    <!-- TOOLBAR INFERIOR -->
     <div class="bottom-dock">
-        <button id="btnPainelAdmin" class="tool-btn admin" style="display:none;" onclick="abrirAdminModal()" data-tooltip="Gerenciar Usuários"><i class="ph ph-users-three"></i></button>
-        <div class="divider" id="divAdmin" style="display:none;"></div>
         <button class="btn-fab" onclick="abrirModal()" title="Catálogo"><i class="ph ph-list-magnifying-glass"></i></button>
         <div class="divider" id="divHistory" style="display:none"></div>
         <button id="btnUndo" class="tool-btn history-btn" onclick="desfazer()" data-tooltip="Desfazer Ação"><i class="ph ph-arrow-u-up-left"></i></button>
@@ -340,7 +305,6 @@
         <button class="tool-btn" onclick="fazerLogout(false)" data-tooltip="Sair"><i class="ph ph-sign-out"></i></button>
     </div>
 
-    <!-- MENU FIO -->
     <div id="wirePropMenu">
         <div id="wirePropHeader"><div class="prop-title">Propriedades do Fio</div><i class="ph ph-dots-six" style="color: var(--text-muted); font-size: 18px;"></i></div>
         <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -401,7 +365,6 @@
         </div>
     </div>
 
-    <!-- Modais Genéricos Extras -->
     <div id="modalTextPrompt" class="modal-overlay">
         <div class="modal-content" style="max-width: 420px;">
             <div class="modal-header"><h2 class="modal-title" id="textPromptTitle">Texto</h2></div>
@@ -461,7 +424,6 @@
             if (isFirebaseOnline) {
                 db.ref('sim_users').on('value', (snapshot) => {
                     if (snapshot.exists()) { usersDB = snapshot.val(); } else { usersDB = { 'DESENVOLVEDOR': { pass: '1709', role: 'admin', status: 'approved' } }; db.ref('sim_users').set(usersDB); }
-                    if(document.getElementById('modalAdmin').style.display === 'flex') renderAdminTable();
                 }, (error) => { fallbackLocalUsers(); });
 
                 db.ref('sim_custom_components').on('value', (snapshot) => {
@@ -567,7 +529,9 @@
                 }
                 currentActiveUser = usersDB[username]; currentActiveUser.username = username; updateActivity(); entrarNoApp();
             }).catch((error) => {
-                if (error.code !== 'auth/popup-closed-by-user') {
+                if (error.code === 'auth/unauthorized-domain') {
+                    mostrarAviso('Domínio não autorizado. O Desenvolvedor precisa adicionar o site no painel do Firebase.', 'erro');
+                } else if (error.code !== 'auth/popup-closed-by-user') {
                     mostrarAviso('Erro no login com Google: ' + error.message, 'erro');
                 }
             });
@@ -604,7 +568,7 @@
         }
 
         function aplicarPermissoes() {
-            if (currentActiveUser && currentActiveUser.role === 'admin') { document.getElementById('btnCriarCustom').style.display = 'block'; document.getElementById('btnPainelAdmin').style.display = 'flex'; document.getElementById('divAdmin').style.display = 'block'; } else { document.getElementById('btnCriarCustom').style.display = 'none'; document.getElementById('btnPainelAdmin').style.display = 'none'; document.getElementById('divAdmin').style.display = 'none'; }
+            if (currentActiveUser && currentActiveUser.role === 'admin') { document.getElementById('btnCriarCustom').style.display = 'block'; } else { document.getElementById('btnCriarCustom').style.display = 'none'; }
             if(isFirebaseOnline && currentActiveUser) { db.ref('sim_projects/' + currentActiveUser.username).on('value', snap => { myProjectsDB = snap.exists() ? snap.val() : {}; if(document.getElementById('modalProjects').style.display === 'flex') renderProjectsTable(); }, err => fallbackLocalProjects()); } else { fallbackLocalProjects(); }
         }
 
@@ -617,25 +581,6 @@
             document.getElementById('authScreen').style.display = 'flex'; document.getElementById('canvasWrapper').classList.add('blurred'); setTimeout(() => document.getElementById('authScreen').style.opacity = '1', 10); mudarAuthView('login'); 
             if(!silent) mostrarAviso('Sessão encerrada.', 'info'); 
         }
-        
-        function abrirAdminModal() { renderAdminTable(); document.getElementById('modalAdmin').style.display = 'flex'; setTimeout(() => { document.getElementById('modalAdmin').style.opacity = '1'; }, 10); }
-        function fecharAdminModal() { document.getElementById('modalAdmin').style.opacity = '0'; setTimeout(() => document.getElementById('modalAdmin').style.display = 'none', 300); }
-
-        function renderAdminTable() {
-            const tbody = document.getElementById('adminTableBody'); tbody.innerHTML = '';
-            for (const [username, data] of Object.entries(usersDB)) {
-                if (username === 'DESENVOLVEDOR') continue; 
-                let displayUser = data.email ? data.email : username;
-                let statusBadge = ''; if (data.status === 'approved') statusBadge = '<span class="status-badge approved">Permitido</span>'; if (data.status === 'pending') statusBadge = '<span class="status-badge pending">Aguardando</span>'; if (data.status === 'blocked') statusBadge = '<span class="status-badge blocked">Bloqueado</span>';
-                let actionHtml = ''; if (data.status !== 'approved') actionHtml += `<button class="action-btn approve" onclick="alterarStatus('${username}', 'approved')" title="Permitir Acesso"><i class="ph ph-check-circle"></i></button>`; if (data.status !== 'blocked') actionHtml += `<button class="action-btn revoke" onclick="alterarStatus('${username}', 'blocked')" title="Remover Permissão"><i class="ph ph-prohibit"></i></button>`; actionHtml += `<button class="action-btn key" onclick="mudarSenhaUser('${username}')" title="Mudar Senha"><i class="ph ph-key"></i></button><button class="action-btn delete" onclick="excluirUser('${username}')" title="Excluir Usuário"><i class="ph ph-trash"></i></button>`;
-                tbody.innerHTML += `<tr><td style="font-weight: 600;">${displayUser}</td><td>${statusBadge}</td><td style="text-align: right; white-space: nowrap;">${actionHtml}</td></tr>`;
-            }
-            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum usuário registrado além do DESENVOLVEDOR.</td></tr>';
-        }
-
-        function alterarStatus(user, newStatus) { if(usersDB[user]) { usersDB[user].status = newStatus; saveDBUsers(usersDB); renderAdminTable(); mostrarAviso('Status alterado com sucesso.', 'sucesso'); } }
-        function mudarSenhaUser(user) { const novaSenha = prompt(`Digite a nova senha para o usuário "${user}":`); if (novaSenha && novaSenha.trim() !== "") { if(usersDB[user]) { usersDB[user].pass = novaSenha.trim(); saveDBUsers(usersDB); mostrarAviso(`Senha de ${user} alterada.`, 'sucesso'); } } }
-        function excluirUser(user) { if(confirm(`Tem certeza que deseja EXCLUIR permanentemente o usuário "${user}"?`)) { if(usersDB[user]) { delete usersDB[user]; saveDBUsers(usersDB); renderAdminTable(); mostrarAviso('Usuário excluído.', 'info'); } } }
 
         function salvarProjeto() { const nome = prompt("Digite o nome para salvar o projeto:"); if (!nome || nome.trim() === '') return; const projId = 'proj_' + Date.now(); const payload = { nome: nome.trim(), dataStr: JSON.stringify(getEstadoAtual()), timestamp: Date.now() }; if (isFirebaseOnline) { try { db.ref(`sim_projects/${currentActiveUser.username}/${projId}`).set(payload).then(() => mostrarAviso("Projeto salvo na nuvem!", "sucesso")).catch(e => { salvarProjetoLocalFallback(projId, payload); }); } catch(e) { salvarProjetoLocalFallback(projId, payload); } } else { salvarProjetoLocalFallback(projId, payload); } }
         function salvarProjetoLocalFallback(projId, payload) { let allProj = JSON.parse(localStorage.getItem('sim_projects_local')) || {}; if(!allProj[currentActiveUser.username]) allProj[currentActiveUser.username] = {}; allProj[currentActiveUser.username][projId] = payload; localStorage.setItem('sim_projects_local', JSON.stringify(allProj)); mostrarAviso("Projeto salvo localmente (Modo Offline).", "sucesso"); fallbackLocalProjects(); }
