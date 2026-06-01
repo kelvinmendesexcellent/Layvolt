@@ -65,7 +65,7 @@
         .tool-btn:hover::after { opacity: 1; transform: translateY(0); }
 
         .quick-settings { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.5); padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border-color); }
-        select, input[type="color"], input[type="text"], input[type="number"], input[type="password"], input[type="email"] { border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: #fff; color: var(--text-color); font-family: 'Inter'; font-size: 13px; font-weight: 500; outline: none; }
+        select, input[type="color"], input[type="text"], input[type="number"], input[type="password"], input[type="email"], textarea { border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: #fff; color: var(--text-color); font-family: 'Inter'; font-size: 13px; font-weight: 500; outline: none; }
         input[type="color"] { width: 26px; height: 26px; padding: 0; border-radius: 50%; overflow: hidden; border: none; cursor: pointer;}
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; } input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border-color); border-radius: 50%; }
 
@@ -154,6 +154,8 @@
         .btn-close:hover { background: #e5e7eb; }
         .btn-confirm { background: var(--primary); color: #111827; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
         .btn-confirm:hover { background: var(--primary-hover); }
+        .btn-danger-solid { background: var(--danger); color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-danger-solid:hover { background: #dc2626; }
 
         #modalTextPrompt .modal-content, #modalConfirmClear .modal-content { max-width: 420px; }
         .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 12px; }
@@ -182,72 +184,137 @@
         .toast.info { border-left-color: var(--primary); }
         @keyframes slideDown { 0% { opacity: 0; transform: translateY(-20px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes fadeOut { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.95); } }
+
+        /* Estilos do Perfil Flutuante */
+        .profile-float-btn { position: fixed; top: 24px; right: 24px; width: 50px; height: 50px; border-radius: 50%; background: var(--surface-color); backdrop-filter: blur(10px); border: 2px solid var(--primary); box-shadow: var(--shadow-lg); z-index: 90; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; overflow: hidden; color: var(--primary); font-weight: 700; font-size: 22px; }
+        .profile-float-btn:hover { transform: scale(1.08); box-shadow: 0 12px 30px rgba(245, 166, 35, 0.3); }
+        .profile-float-btn img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        
+        .profile-section { padding: 16px 0; border-bottom: 1px solid var(--border-color); }
+        .profile-section:last-child { border-bottom: none; }
+        .profile-section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px; }
+        .profile-pic-wrapper { display: flex; align-items: center; gap: 16px; }
+        .profile-pic-preview { width: 70px; height: 70px; border-radius: 50%; border: 2px dashed var(--border-color); display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f9fafb; font-size: 28px; color: var(--text-muted); cursor: pointer; transition: border-color 0.2s; position: relative; }
+        .profile-pic-preview:hover { border-color: var(--primary); color: var(--primary); }
+        .profile-pic-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-pic-preview::after { content: '\f083'; /* Camera icon */ font-family: "Phosphor"; position: absolute; background: rgba(0,0,0,0.5); color: white; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; font-size: 24px; }
+        .profile-pic-preview:hover::after { opacity: 1; }
     </style>
 </head>
 <body>
 
     <div id="toastContainer"></div>
 
+    <div id="profileFloatBtn" class="profile-float-btn" onclick="abrirModalPerfil()" style="display:none;" title="Perfil e Configurações">
+        <img id="profileFloatImg" src="" alt="Perfil">
+        <span id="profileFloatInitial">U</span>
+    </div>
+
+    <div id="modalProfile" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2 class="modal-title" data-i18n="prof_title">Perfil e Configurações</h2>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; flex: 1; min-height: 0;">
+                <div class="profile-section" style="padding-top: 0;">
+                    <div class="profile-section-title" data-i18n="prof_pic">Foto de Perfil</div>
+                    <div class="profile-pic-wrapper">
+                        <div class="profile-pic-preview" onclick="document.getElementById('uploadProfilePic').click()">
+                            <img id="profilePreviewImg" src="" style="display:none;">
+                            <span id="profilePreviewInit">U</span>
+                        </div>
+                        <input type="file" id="uploadProfilePic" accept="image/png, image/jpeg" style="display:none;" onchange="alterarFotoPerfil(event)">
+                        <button class="btn-close" style="font-size: 13px; padding: 8px 16px;" onclick="document.getElementById('uploadProfilePic').click()" data-i18n="btn_change_pic">Alterar Foto</button>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <div class="profile-section-title" data-i18n="prof_lang">Idioma</div>
+                    <select id="langSelector" style="width: 100%; padding: 10px; font-size: 14px;" onchange="alterarIdiomaConfig(this.value)">
+                        <option value="pt">Português (BR)</option>
+                        <option value="en">English</option>
+                        <option value="es">Español</option>
+                    </select>
+                </div>
+
+                <div class="profile-section">
+                    <div class="profile-section-title" data-i18n="prof_sec">Segurança - Alterar Senha</div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <input type="password" id="passAtual" placeholder="Senha Atual" data-i18n-ph="pass_curr">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <input type="password" id="passNova" placeholder="Nova Senha" data-i18n-ph="pass_new">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <input type="password" id="passConf" placeholder="Confirmar Nova Senha" data-i18n-ph="pass_conf">
+                    </div>
+                    <button class="btn-confirm" style="width: 100%; padding: 12px;" onclick="alterarSenha()" data-i18n="btn_change_pass">Atualizar Senha</button>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn-close" onclick="fecharModalPerfil()" data-i18n="btn_close">Fechar</button></div>
+        </div>
+    </div>
+
     <div id="authScreen">
         <div class="auth-box" id="loginBox">
-            <h2 class="auth-title">Entrar</h2>
-            <p class="auth-subtitle">Acesse o Layvolt</p>
+            <h2 class="auth-title" data-i18n="auth_title">Entrar</h2>
+            <p class="auth-subtitle" data-i18n="auth_sub">Acesse o Layvolt</p>
             
             <div class="auth-input-group">
                 <i class="ph ph-envelope left-icon"></i>
-                <input type="email" id="loginUser" class="auth-input" placeholder="E-mail" autocomplete="off">
+                <input type="email" id="loginUser" class="auth-input" placeholder="E-mail" data-i18n-ph="email" autocomplete="off">
             </div>
             <div class="auth-input-group">
                 <i class="ph ph-lock-key left-icon"></i>
-                <input type="password" id="loginPass" class="auth-input" placeholder="Senha" onkeypress="if(event.key==='Enter') fazerLogin()">
+                <input type="password" id="loginPass" class="auth-input" placeholder="Senha" data-i18n-ph="pass" onkeypress="if(event.key==='Enter') fazerLogin()">
                 <i class="ph ph-eye right-icon" onclick="togglePassword('loginPass', this)" title="Mostrar/Ocultar Senha"></i>
             </div>
             
-            <button class="auth-btn" onclick="fazerLogin()">Acessar</button>
+            <button class="auth-btn" onclick="fazerLogin()" data-i18n="access">Acessar</button>
             <button class="auth-btn-google" onclick="fazerLoginGoogle()">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 18px;">
-                Entrar com Google
+                <span data-i18n="login_google">Entrar com Google</span>
             </button>
-            <div class="auth-switch">Não tem uma conta? <a onclick="mudarAuthView('register')">Criar agora</a></div>
+            <div class="auth-switch"><span data-i18n="no_account">Não tem uma conta?</span> <a onclick="mudarAuthView('register')" data-i18n="create_now">Criar agora</a></div>
         </div>
 
         <div class="auth-box" id="registerBox" style="display: none;">
-            <h2 class="auth-title">Criar Conta</h2>
-            <p class="auth-subtitle">Verifique seu e-mail para aprovação automática</p>
+            <h2 class="auth-title" data-i18n="reg_title">Criar Conta</h2>
+            <p class="auth-subtitle" data-i18n="reg_sub">Verifique seu e-mail para aprovação automática</p>
             
             <div class="auth-input-group">
                 <i class="ph ph-envelope left-icon"></i>
-                <input type="email" id="regUser" class="auth-input" placeholder="Seu E-mail" autocomplete="off">
+                <input type="email" id="regUser" class="auth-input" placeholder="Seu E-mail" data-i18n-ph="reg_email" autocomplete="off">
             </div>
             <div class="auth-input-group">
                 <i class="ph ph-lock-key left-icon"></i>
-                <input type="password" id="regPass" class="auth-input" placeholder="Senha (Mín 6 caracteres)">
+                <input type="password" id="regPass" class="auth-input" placeholder="Senha (Mín 6 caracteres)" data-i18n-ph="reg_pass">
                 <i class="ph ph-eye right-icon" onclick="togglePassword('regPass', this)" title="Mostrar/Ocultar Senha"></i>
             </div>
             <div class="auth-input-group">
                 <i class="ph ph-lock-key left-icon"></i>
-                <input type="password" id="regPassConf" class="auth-input" placeholder="Confirmar Senha" onkeypress="if(event.key==='Enter') fazerRegistro()">
+                <input type="password" id="regPassConf" class="auth-input" placeholder="Confirmar Senha" data-i18n-ph="reg_pass_conf" onkeypress="if(event.key==='Enter') fazerRegistro()">
                 <i class="ph ph-eye right-icon" onclick="togglePassword('regPassConf', this)" title="Mostrar/Ocultar Senha"></i>
             </div>
             
-            <button class="auth-btn" onclick="fazerRegistro()">Registrar</button>
-            <div class="auth-switch">Já possui uma conta? <a onclick="mudarAuthView('login')">Entrar</a></div>
+            <button class="auth-btn" onclick="fazerRegistro()" data-i18n="reg_btn">Registrar</button>
+            <div class="auth-switch"><span data-i18n="has_account">Já possui uma conta?</span> <a onclick="mudarAuthView('login')" data-i18n="login_now">Entrar</a></div>
         </div>
     </div>
 
     <div id="modalProjects" class="modal-overlay">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h2 class="modal-title">Meus Projetos</h2>
-                <div style="color: var(--text-muted); font-size: 14px; font-weight: 600;"><i class="ph ph-folder-open"></i> Salvos na Nuvem</div>
+                <h2 class="modal-title" data-i18n="projects_title">Meus Projetos</h2>
+                <div style="color: var(--text-muted); font-size: 14px; font-weight: 600;"><i class="ph ph-folder-open"></i> <span data-i18n="cloud_saved">Salvos na Nuvem</span></div>
             </div>
             <div class="modal-body" style="padding: 0; max-height: 60vh; overflow-y: auto;">
                 <table class="data-table">
-                    <thead><tr><th>Nome do Projeto</th><th>Data de Criação</th><th style="text-align: right;">Ações</th></tr></thead>
+                    <thead><tr><th data-i18n="th_name">Nome do Projeto</th><th data-i18n="th_date">Data de Criação</th><th style="text-align: right;" data-i18n="th_actions">Ações</th></tr></thead>
                     <tbody id="projectsTableBody"></tbody>
                 </table>
             </div>
-            <div class="modal-footer"><button class="btn-close" onclick="fecharModalProjetos()">Fechar</button></div>
+            <div class="modal-footer"><button class="btn-close" onclick="fecharModalProjetos()" data-i18n="btn_close">Fechar</button></div>
         </div>
     </div>
 
@@ -266,13 +333,13 @@
             <button class="dpad-btn right" onclick="dpadMove(1, 0)"><i class="ph ph-caret-right"></i></button>
             <button class="dpad-btn down" onclick="dpadMove(0, 1)"><i class="ph ph-caret-down"></i></button>
         </div>
-        <div class="dpad-controls-bottom"><span>Opacidade</span><input type="range" id="dpadOp" min="0" max="1" step="0.05" value="0.8" oninput="updateDpadOpacity()"></div>
+        <div class="dpad-controls-bottom"><span data-i18n="opacity">Opacidade</span><input type="range" id="dpadOp" min="0" max="1" step="0.05" value="0.8" oninput="updateDpadOpacity()"></div>
     </div>
 
     <div id="wireSubMenu" class="wire-sub-menu">
-        <button class="tool-btn" onclick="setFerramenta('fio')" data-tooltip="Adicionar Fio"><i class="ph ph-vector-two"></i></button>
-        <button class="tool-btn" onclick="setFerramenta('entortar')" data-tooltip="Modelar Fio"><i class="ph ph-waves"></i></button>
-        <button class="tool-btn" onclick="setFerramenta('alicate')" data-tooltip="Cortar Fio (Alicate)"><i class="ph ph-scissors"></i></button>
+        <button class="tool-btn" onclick="setFerramenta('fio')" data-i18n-tt="tooltip_add_wire"><i class="ph ph-vector-two"></i></button>
+        <button class="tool-btn" onclick="setFerramenta('entortar')" data-i18n-tt="tooltip_bend_wire"><i class="ph ph-waves"></i></button>
+        <button class="tool-btn" onclick="setFerramenta('alicate')" data-i18n-tt="tooltip_cut_wire"><i class="ph ph-scissors"></i></button>
     </div>
 
     <div id="floatActionMenu" class="float-action-menu">
@@ -285,64 +352,66 @@
     </div>
 
     <div class="bottom-dock">
-        <button class="btn-fab" onclick="abrirModal()" title="Catálogo"><i class="ph ph-list-magnifying-glass"></i></button>
+        <button class="btn-fab" onclick="abrirModal()" data-i18n-tt="tooltip_catalog" data-tooltip="Catálogo"><i class="ph ph-list-magnifying-glass"></i></button>
         <div class="divider" id="divHistory" style="display:none"></div>
-        <button id="btnUndo" class="tool-btn history-btn" onclick="desfazer()" data-tooltip="Desfazer Ação"><i class="ph ph-arrow-u-up-left"></i></button>
-        <button id="btnRedo" class="tool-btn history-btn" onclick="refazer()" data-tooltip="Refazer Ação"><i class="ph ph-arrow-u-up-right"></i></button>
+        <button id="btnUndo" class="tool-btn history-btn" onclick="desfazer()" data-i18n-tt="tooltip_undo" data-tooltip="Desfazer Ação"><i class="ph ph-arrow-u-up-left"></i></button>
+        <button id="btnRedo" class="tool-btn history-btn" onclick="refazer()" data-i18n-tt="tooltip_redo" data-tooltip="Refazer Ação"><i class="ph ph-arrow-u-up-right"></i></button>
         <div class="divider"></div>
-        <button id="btnMover" class="tool-btn active" onclick="setFerramenta('mover')" data-tooltip="Modo de Seleção Inteligente"><i id="selectModeIcon" class="ph ph-cursor"></i></button>
-        <button id="btnFioMain" class="tool-btn" onclick="toggleWireMenu()" data-tooltip="Ferramentas de Fio"><i class="ph ph-bezier-curve"></i></button>
-        <button id="btnTexto" class="tool-btn" onclick="abrirModalTexto(null)" data-tooltip="Adicionar Texto"><i class="ph ph-text-t"></i></button>
+        <button id="btnMover" class="tool-btn active" onclick="setFerramenta('mover')" data-i18n-tt="tooltip_smart" data-tooltip="Modo Inteligente"><i id="selectModeIcon" class="ph ph-cursor"></i></button>
+        <button id="btnFioMain" class="tool-btn" onclick="toggleWireMenu()" data-i18n-tt="tooltip_wire" data-tooltip="Ferramentas de Fio"><i class="ph ph-bezier-curve"></i></button>
+        <button id="btnTexto" class="tool-btn" onclick="abrirModalTexto(null)" data-i18n-tt="tooltip_text" data-tooltip="Adicionar Texto"><i class="ph ph-text-t"></i></button>
         <div class="divider"></div>
         <div class="quick-settings"><input type="color" id="corFio" value="#ef4444" title="Cor padrão do fio"></div>
-        <button id="btnDeleteSelectedToolbar" class="tool-btn danger" style="display:none;" onclick="deletarSelecionados()" data-tooltip="Deletar Selecionado"><i class="ph ph-trash"></i></button>
+        <button id="btnDeleteSelectedToolbar" class="tool-btn danger" style="display:none;" onclick="deletarSelecionados()" data-i18n-tt="tooltip_delete" data-tooltip="Deletar Selecionado"><i class="ph ph-trash"></i></button>
         <div class="divider"></div>
-        <button class="tool-btn action" onclick="salvarProjeto()" data-tooltip="Salvar Projeto"><i class="ph ph-floppy-disk"></i></button>
-        <button class="tool-btn action" onclick="abrirModalProjetos()" data-tooltip="Projetos Salvos"><i class="ph ph-folder-open"></i></button>
-        <button class="tool-btn" onclick="abrirExport()" data-tooltip="Exportar Imagem/PDF"><i class="ph ph-download-simple"></i></button>
-        <button class="tool-btn danger" onclick="abrirModalConfirmarLimpeza()" data-tooltip="Limpar Tela"><i class="ph ph-eraser"></i></button>
+        <button class="tool-btn action" onclick="salvarProjeto()" data-i18n-tt="tooltip_save" data-tooltip="Salvar Projeto"><i class="ph ph-floppy-disk"></i></button>
+        <button class="tool-btn action" onclick="abrirModalProjetos()" data-i18n-tt="tooltip_projects" data-tooltip="Projetos Salvos"><i class="ph ph-folder-open"></i></button>
+        <button class="tool-btn" onclick="abrirExport()" data-i18n-tt="tooltip_export" data-tooltip="Exportar Imagem/PDF"><i class="ph ph-download-simple"></i></button>
+        <button class="tool-btn danger" onclick="abrirModalConfirmarLimpeza()" data-i18n-tt="tooltip_clear" data-tooltip="Limpar Tela"><i class="ph ph-eraser"></i></button>
         <div class="divider"></div>
-        <button class="tool-btn" onclick="fazerLogout(false)" data-tooltip="Sair"><i class="ph ph-sign-out"></i></button>
+        <button class="tool-btn" onclick="fazerLogout(false)" data-i18n-tt="tooltip_logout" data-tooltip="Sair"><i class="ph ph-sign-out"></i></button>
     </div>
 
     <div id="wirePropMenu">
-        <div id="wirePropHeader"><div class="prop-title">Propriedades do Fio</div><i class="ph ph-dots-six" style="color: var(--text-muted); font-size: 18px;"></i></div>
+        <div id="wirePropHeader"><div class="prop-title" data-i18n="wire_props">Propriedades do Fio</div><i class="ph ph-dots-six" style="color: var(--text-muted); font-size: 18px;"></i></div>
         <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div class="prop-row"><span>Cor:</span><input type="color" id="wireEditColor" oninput="atualizarFioSelecionado()"></div>
-            <div class="prop-row"><span>Espessura:</span><input type="range" id="wireThick" min="1" max="30" value="3" oninput="atualizarFioSelecionado()"></div>
-            <div class="prop-row"><span>Estilo:</span><select id="wireStyle" onchange="atualizarFioSelecionado()"><option value="curvo">Curvo</option><option value="quadrado">Ortogonal</option></select></div>
-            <div class="prop-row"><span>Camada:</span><select id="wireZ" onchange="atualizarFioSelecionado()"><option value="frente">Sobre tudo</option><option value="fundo">Atrás de tudo</option></select></div>
+            <div class="prop-row"><span data-i18n="color">Cor:</span><input type="color" id="wireEditColor" oninput="atualizarFioSelecionado()"></div>
+            <div class="prop-row"><span data-i18n="thick">Espessura:</span><input type="range" id="wireThick" min="1" max="30" value="3" oninput="atualizarFioSelecionado()"></div>
+            <div class="prop-row"><span data-i18n="style">Estilo:</span><select id="wireStyle" onchange="atualizarFioSelecionado()"><option value="curvo">Curvo</option><option value="quadrado">Ortogonal</option></select></div>
+            <div class="prop-row"><span data-i18n="layer">Camada:</span><select id="wireZ" onchange="atualizarFioSelecionado()"><option value="frente">Sobre tudo</option><option value="fundo">Atrás de tudo</option></select></div>
         </div>
     </div>
 
     <div id="modalAdd" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Catálogo de Elementos</h2>
+                <h2 class="modal-title" data-i18n="cat_title">Catálogo de Elementos</h2>
                 <div style="display:flex; gap: 10px; width: 60%;">
-                    <input type="text" id="searchInput" class="search-bar" placeholder="Buscar componente..." onkeyup="filtrarCatalogo()">
+                    <input type="text" id="searchInput" class="search-bar" placeholder="Buscar componente..." data-i18n-ph="search_comp" onkeyup="filtrarCatalogo()">
                     <button id="btnCriarCustom" class="btn-confirm" onclick="abrirCriador()" style="display:none;">+ Criar Custom</button>
                 </div>
             </div>
             <div class="catalog-container" id="catalogContainer">
                 <div id="emptyCatalogMsg" style="display:none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); opacity: 0.6;">
                     <i class="ph ph-archive-box" style="font-size: 64px; margin-bottom: 16px;"></i>
-                    <p style="font-size: 16px; font-weight: 600;">O catálogo está vazio.</p>
+                    <p style="font-size: 16px; font-weight: 600;" data-i18n="cat_empty">O catálogo está vazio.</p>
                 </div>
             </div>
-            <div class="modal-footer"><button class="btn-close" onclick="fecharModal()">Fechar</button></div>
+            <div class="modal-footer"><button class="btn-close" onclick="fecharModal()" data-i18n="btn_close">Fechar</button></div>
         </div>
     </div>
 
     <div id="modalCreator" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header"><h2 class="modal-title">Novo Componente</h2></div>
+            <div class="modal-header"><h2 class="modal-title" data-i18n="new_comp">Novo Componente</h2></div>
             <div class="creator-body">
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="customCompName" placeholder="Nome (Ex: Inversor WEG)" style="flex: 2;">
                     <input type="text" id="customCompCategory" list="catList" placeholder="Categoria (Nova ou Existente)" style="flex: 1.5;">
                     <datalist id="catList"></datalist>
                 </div>
+                <textarea id="customCompDesc" placeholder="Descrição detalhada do elemento..." rows="3" style="width: 100%; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; font-family: 'Inter'; font-size: 13px; outline: none; resize: vertical;"></textarea>
+
                 <button class="btn-close" onclick="document.getElementById('fileInput').click()" style="width:100%; justify-content:center; gap:8px;">
                     <i class="ph ph-upload-simple" style="font-size:20px;"></i> 1. Fazer Upload da Foto (Apenas PNG)
                 </button>
@@ -355,35 +424,35 @@
                 <div class="help-text">2. Clique na imagem para definir os conectores (bornes) de fio.</div>
                 <div style="display:flex; justify-content: space-between; align-items:center; background: #e5e7eb; padding: 10px; border-radius: 8px;">
                     <span id="terminalCount" style="font-size: 14px; font-weight: 600; color: var(--text-color);">Terminais marcados: 0</span>
-                    <button class="btn-close" onclick="limparBornesCustom()" style="padding: 6px 12px; font-size:12px; background: #fff;">Desfazer</button>
+                    <button class="btn-close" onclick="limparBornesCustom()" style="padding: 6px 12px; font-size:12px; background: #fff;" data-i18n="btn_undo">Desfazer</button>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-close" onclick="fecharCriador()">Cancelar</button>
-                <button class="btn-confirm" onclick="salvarComponenteCustom()">Salvar e Adicionar</button>
+                <button class="btn-close" onclick="fecharCriador()" data-i18n="btn_cancel">Cancelar</button>
+                <button class="btn-confirm" onclick="salvarComponenteCustom()" data-i18n="btn_confirm">Salvar e Adicionar</button>
             </div>
         </div>
     </div>
 
     <div id="modalTextPrompt" class="modal-overlay">
         <div class="modal-content" style="max-width: 420px;">
-            <div class="modal-header"><h2 class="modal-title" id="textPromptTitle">Texto</h2></div>
+            <div class="modal-header"><h2 class="modal-title" id="textPromptTitle" data-i18n="text_title">Texto</h2></div>
             <div class="modal-body">
                 <div id="textPreviewArea" style="min-height: 90px; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--border-color); border-radius: 12px; background: #fafafa; overflow: hidden; position: relative;">
                     <div id="textPreviewEl" style="white-space: nowrap; transition: all 0.2s ease;">Preview</div>
                 </div>
-                <div class="form-group" style="margin-top: 10px;"><label>Conteúdo</label><input type="text" id="txtContent" oninput="updateTextPreview()"></div>
+                <div class="form-group" style="margin-top: 10px;"><label data-i18n="content">Conteúdo</label><input type="text" id="txtContent" oninput="updateTextPreview()"></div>
                 <div class="form-row">
-                    <div class="form-group" style="flex:2"><label>Fonte</label><select id="txtFont" onchange="updateTextPreview()"><option value="Inter">Inter</option><option value="Arial">Arial</option><option value="Roboto Mono">Roboto Mono</option></select></div>
-                    <div class="form-group" style="flex:1"><label>Tamanho</label><input type="number" id="txtSize" value="16" min="8" max="100" oninput="updateTextPreview()"></div>
+                    <div class="form-group" style="flex:2"><label data-i18n="font">Fonte</label><select id="txtFont" onchange="updateTextPreview()"><option value="Inter">Inter</option><option value="Arial">Arial</option><option value="Roboto Mono">Roboto Mono</option></select></div>
+                    <div class="form-group" style="flex:1"><label data-i18n="size">Tamanho</label><input type="number" id="txtSize" value="16" min="8" max="100" oninput="updateTextPreview()"></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group" style="flex:1;"><label>Texto</label><input type="color" id="txtColor" value="#111827" oninput="updateTextPreview()"></div>
-                    <div class="form-group" style="flex:1;"><label>Fundo</label><input type="color" id="txtBg" value="#ffffff" oninput="updateTextPreview()"></div>
+                    <div class="form-group" style="flex:1;"><label data-i18n="text_color">Texto</label><input type="color" id="txtColor" value="#111827" oninput="updateTextPreview()"></div>
+                    <div class="form-group" style="flex:1;"><label data-i18n="bg_color">Fundo</label><input type="color" id="txtBg" value="#ffffff" oninput="updateTextPreview()"></div>
                     <div class="form-group" style="flex:1; flex-direction:row; padding-top: 15px;"><input type="checkbox" id="txtTransp" checked onchange="updateTextPreview()"> <label style="font-size:11px;">Transp.</label></div>
                 </div>
             </div>
-            <div class="modal-footer"><button class="btn-close" onclick="fecharModalTexto()">Cancelar</button><button class="btn-confirm" onclick="salvarModalTexto()">Aplicar</button></div>
+            <div class="modal-footer"><button class="btn-close" onclick="fecharModalTexto()" data-i18n="btn_cancel">Cancelar</button><button class="btn-confirm" onclick="salvarModalTexto()" data-i18n="btn_apply">Aplicar</button></div>
         </div>
     </div>
 
@@ -391,15 +460,15 @@
         <div class="modal-content" style="max-width: 420px;">
             <div class="modal-body" style="text-align:center; padding: 40px 24px;">
                 <i class="ph ph-warning-circle" style="font-size: 56px; color: var(--danger); margin-bottom: 16px;"></i>
-                <h3 style="margin:0 0 10px 0; font-size:22px; color: var(--text-color);">Limpar Área de Trabalho?</h3>
+                <h3 style="margin:0 0 10px 0; font-size:22px; color: var(--text-color);" data-i18n="clear_title">Limpar Área de Trabalho?</h3>
             </div>
-            <div class="modal-footer" style="justify-content: center; gap: 16px;"><button class="btn-close" onclick="document.getElementById('modalConfirmClear').style.display='none'">Cancelar</button><button class="btn-danger-solid" onclick="document.getElementById('modalConfirmClear').style.display='none'; limparSimulador(false);">Sim, limpar</button></div>
+            <div class="modal-footer" style="justify-content: center; gap: 16px;"><button class="btn-close" onclick="document.getElementById('modalConfirmClear').style.display='none'" data-i18n="btn_cancel">Cancelar</button><button class="btn-danger-solid" onclick="document.getElementById('modalConfirmClear').style.display='none'; limparSimulador(false);" data-i18n="btn_yes_clear">Sim, limpar</button></div>
         </div>
     </div>
 
     <div id="modalExport" class="modal-overlay">
         <div class="modal-content" style="max-width: 480px;">
-            <div class="modal-header" style="border-bottom: none; padding-bottom: 0;"><h2 class="modal-title" style="text-align: center; width: 100%;">Exportar Projeto</h2></div>
+            <div class="modal-header" style="border-bottom: none; padding-bottom: 0;"><h2 class="modal-title" style="text-align: center; width: 100%;" data-i18n="export_title">Exportar Projeto</h2></div>
             <div class="modal-body">
                 <div class="export-grid">
                     <button class="export-btn" onclick="exportarProjeto('png')"><i class="ph ph-image"></i>PNG</button>
@@ -407,11 +476,203 @@
                     <button class="export-btn" onclick="exportarProjeto('pdf')"><i class="ph ph-file-pdf"></i>PDF</button>
                 </div>
             </div>
-            <div class="modal-footer" style="border-top: none; justify-content: center;"><button class="btn-close" style="width:100%; border:none; background:rgba(0,0,0,0.05);" onclick="fecharExport()">Cancelar</button></div>
+            <div class="modal-footer" style="border-top: none; justify-content: center;"><button class="btn-close" style="width:100%; border:none; background:rgba(0,0,0,0.05);" onclick="fecharExport()" data-i18n="btn_cancel">Cancelar</button></div>
         </div>
     </div>
 
     <script>
+        /* === Sistema de Internacionalização (i18n) === */
+        let currentLang = 'pt';
+        const i18nDict = {
+            'pt': {
+                'auth_title': 'Entrar', 'auth_sub': 'Acesse o Layvolt', 'email': 'E-mail', 'pass': 'Senha', 'access': 'Acessar',
+                'login_google': 'Entrar com Google', 'no_account': 'Não tem uma conta?', 'create_now': 'Criar agora',
+                'reg_title': 'Criar Conta', 'reg_sub': 'Verifique seu e-mail para aprovação automática', 'reg_email': 'Seu E-mail',
+                'reg_pass': 'Senha (Mín 6 caracteres)', 'reg_pass_conf': 'Confirmar Senha', 'reg_btn': 'Registrar',
+                'has_account': 'Já possui uma conta?', 'login_now': 'Entrar', 'projects_title': 'Meus Projetos',
+                'cloud_saved': 'Salvos na Nuvem', 'th_name': 'Nome do Projeto', 'th_date': 'Data de Criação', 'th_actions': 'Ações',
+                'opacity': 'Opacidade', 'tooltip_add_wire': 'Adicionar Fio', 'tooltip_bend_wire': 'Modelar Fio', 'tooltip_cut_wire': 'Cortar Fio (Alicate)',
+                'tooltip_catalog': 'Catálogo', 'tooltip_undo': 'Desfazer Ação', 'tooltip_redo': 'Refazer Ação', 'tooltip_smart': 'Modo de Seleção Inteligente',
+                'tooltip_wire': 'Ferramentas de Fio', 'tooltip_text': 'Adicionar Texto', 'tooltip_delete': 'Deletar Selecionado',
+                'tooltip_save': 'Salvar Projeto', 'tooltip_projects': 'Projetos Salvos', 'tooltip_export': 'Exportar Imagem/PDF',
+                'tooltip_clear': 'Limpar Tela', 'tooltip_logout': 'Sair', 'wire_props': 'Propriedades do Fio', 'color': 'Cor:',
+                'thick': 'Espessura:', 'style': 'Estilo:', 'layer': 'Camada:', 'cat_title': 'Catálogo de Elementos',
+                'search_comp': 'Buscar componente...', 'cat_empty': 'O catálogo está vazio.', 'btn_close': 'Fechar',
+                'new_comp': 'Novo Componente', 'btn_undo': 'Desfazer', 'btn_cancel': 'Cancelar', 'btn_confirm': 'Salvar e Adicionar',
+                'text_title': 'Texto', 'content': 'Conteúdo', 'font': 'Fonte', 'size': 'Tamanho', 'text_color': 'Texto', 'bg_color': 'Fundo',
+                'btn_apply': 'Aplicar', 'clear_title': 'Limpar Área de Trabalho?', 'btn_yes_clear': 'Sim, limpar', 'export_title': 'Exportar Projeto',
+                'prof_title': 'Perfil e Configurações', 'prof_pic': 'Foto de Perfil', 'btn_change_pic': 'Alterar Foto', 'prof_lang': 'Idioma',
+                'prof_sec': 'Segurança - Alterar Senha', 'pass_curr': 'Senha Atual', 'pass_new': 'Nova Senha', 'pass_conf': 'Confirmar Nova Senha',
+                'btn_change_pass': 'Atualizar Senha', 'alert_saved': 'Projeto salvo na nuvem!', 'alert_loaded': 'Projeto carregado!',
+                'alert_cleared': 'Área de trabalho limpa.', 'alert_exported': 'Projeto exportado como ', 'alert_pass_changed': 'Senha alterada com sucesso!',
+                'alert_pass_wrong': 'Senha atual incorreta.', 'alert_pass_nomatch': 'As senhas não coincidem.', 'alert_fill_all': 'Preencha todos os campos.',
+                'alert_pic_updated': 'Foto de perfil atualizada!', 'comp_utilizados': 'Componentes Utilizados:', 'sem_desc': 'Sem descrição', 'nenhum_comp': 'Nenhum componente com descrição encontrado.'
+            },
+            'en': {
+                'auth_title': 'Login', 'auth_sub': 'Access Layvolt', 'email': 'Email', 'pass': 'Password', 'access': 'Login',
+                'login_google': 'Sign in with Google', 'no_account': 'Don\'t have an account?', 'create_now': 'Create now',
+                'reg_title': 'Create Account', 'reg_sub': 'Verify your email for automatic approval', 'reg_email': 'Your Email',
+                'reg_pass': 'Password (Min 6 chars)', 'reg_pass_conf': 'Confirm Password', 'reg_btn': 'Register',
+                'has_account': 'Already have an account?', 'login_now': 'Login', 'projects_title': 'My Projects',
+                'cloud_saved': 'Saved in Cloud', 'th_name': 'Project Name', 'th_date': 'Creation Date', 'th_actions': 'Actions',
+                'opacity': 'Opacity', 'tooltip_add_wire': 'Add Wire', 'tooltip_bend_wire': 'Bend Wire', 'tooltip_cut_wire': 'Cut Wire',
+                'tooltip_catalog': 'Catalog', 'tooltip_undo': 'Undo', 'tooltip_redo': 'Redo', 'tooltip_smart': 'Smart Selection Mode',
+                'tooltip_wire': 'Wire Tools', 'tooltip_text': 'Add Text', 'tooltip_delete': 'Delete Selected',
+                'tooltip_save': 'Save Project', 'tooltip_projects': 'Saved Projects', 'tooltip_export': 'Export Image/PDF',
+                'tooltip_clear': 'Clear Canvas', 'tooltip_logout': 'Logout', 'wire_props': 'Wire Properties', 'color': 'Color:',
+                'thick': 'Thickness:', 'style': 'Style:', 'layer': 'Layer:', 'cat_title': 'Components Catalog',
+                'search_comp': 'Search component...', 'cat_empty': 'Catalog is empty.', 'btn_close': 'Close',
+                'new_comp': 'New Component', 'btn_undo': 'Undo', 'btn_cancel': 'Cancel', 'btn_confirm': 'Save and Add',
+                'text_title': 'Text', 'content': 'Content', 'font': 'Font', 'size': 'Size', 'text_color': 'Text', 'bg_color': 'Background',
+                'btn_apply': 'Apply', 'clear_title': 'Clear Workspace?', 'btn_yes_clear': 'Yes, clear', 'export_title': 'Export Project',
+                'prof_title': 'Profile and Settings', 'prof_pic': 'Profile Picture', 'btn_change_pic': 'Change Picture', 'prof_lang': 'Language',
+                'prof_sec': 'Security - Change Password', 'pass_curr': 'Current Password', 'pass_new': 'New Password', 'pass_conf': 'Confirm New Password',
+                'btn_change_pass': 'Update Password', 'alert_saved': 'Project saved to cloud!', 'alert_loaded': 'Project loaded!',
+                'alert_cleared': 'Workspace cleared.', 'alert_exported': 'Project exported as ', 'alert_pass_changed': 'Password successfully changed!',
+                'alert_pass_wrong': 'Wrong current password.', 'alert_pass_nomatch': 'Passwords do not match.', 'alert_fill_all': 'Fill all fields.',
+                'alert_pic_updated': 'Profile picture updated!', 'comp_utilizados': 'Used Components:', 'sem_desc': 'No description', 'nenhum_comp': 'No components with description found.',
+                'dynamic': {
+                    'Painéis Elétricos': 'Electrical Panels', 'Painel Elétrico': 'Electrical Panel', 'Painel Eletrico': 'Electrical Panel', 
+                    'Contatores de Potência': 'Power Contactors', 'Contator de Potência': 'Power Contactor',
+                    'Relés de Voltagem': 'Voltage Relays', 'Relé de Voltagem': 'Voltage Relay',
+                    'Reles de Voltagem': 'Voltage Relays', 'Rele de Voltagem': 'Voltage Relay',
+                    'Ralé de Voltagem': 'Voltage Relay', 'Ralé de voltagem': 'Voltage Relay', // Corrigindo erro de digitação
+                    'Relés de Tensão': 'Voltage Relays', 'Relé de Tensão': 'Voltage Relay',
+                    'Reles de Tensao': 'Voltage Relays', 'Rele de Tensao': 'Voltage Relay',
+                    'Disjuntores-Motor': 'Motor Circuit Breakers', 'Disjuntor-Motor': 'Motor Circuit Breaker',
+                    'Disjuntores de Motor': 'Motor Circuit Breakers', 'Disjuntor de Motor': 'Motor Circuit Breaker',
+                    'Fontes de Alimentação': 'Power Supplies', 'Fonte de Alimentação': 'Power Supply',
+                    'Bornes de Passagem': 'Terminal Blocks', 'Borne de Passagem': 'Terminal Block',
+                    'Infraestrutura': 'Infrastructure',
+                    'Disjuntores': 'Circuit Breakers', 'Disjuntor': 'Circuit Breaker',
+                    'Contatores': 'Contactors', 'Contator': 'Contactor',
+                    'Relés': 'Relays', 'Relé': 'Relay', 'Reles': 'Relays', 'Rele': 'Relay', 'Ralé': 'Relay',
+                    'Motores': 'Motors', 'Motor': 'Motor',
+                    'Trilhos': 'DIN Rails', 'Trilho': 'DIN Rail',
+                    'Fontes': 'Power Supplies', 'Fonte': 'Power Supply',
+                    'Bornes': 'Terminal Blocks', 'Borne': 'Terminal Block',
+                    'Botões': 'Push Buttons', 'Botão': 'Push Button', 'Botoes': 'Push Buttons', 'Botao': 'Push Button',
+                    'Sinaleiros': 'Indicator Lights', 'Sinaleiro': 'Indicator Light',
+                    'Chaves': 'Switches', 'Chave': 'Switch',
+                    'Comandos': 'Controls', 'Comando': 'Control',
+                    'Potência': 'Power', 'Potencia': 'Power',
+                    'Tensão': 'Voltage', 'Tensao': 'Voltage', 'Voltagem': 'Voltage',
+                    'Corrente': 'Current',
+                    'Proteção': 'Protection', 'Protecao': 'Protection',
+                    'Acessórios': 'Accessories', 'Acessorios': 'Accessories',
+                    'Geral': 'General', 'Categoria': 'Category',
+                    'Fios': 'Wires', 'Fio': 'Wire',
+                    'Cabos': 'Cables', 'Cabo': 'Cable',
+                    '3 fases': '3 phases', '1 fase': '1 phase', 'Fases': 'Phases', 'Fase': 'Phase'
+                }
+            },
+            'es': {
+                'auth_title': 'Entrar', 'auth_sub': 'Acceder a Layvolt', 'email': 'Correo', 'pass': 'Contraseña', 'access': 'Acceder',
+                'login_google': 'Entrar con Google', 'no_account': '¿No tienes cuenta?', 'create_now': 'Crear ahora',
+                'reg_title': 'Crear Cuenta', 'reg_sub': 'Verifica tu correo para aprobación automática', 'reg_email': 'Tu Correo',
+                'reg_pass': 'Contraseña (Mín 6 caract)', 'reg_pass_conf': 'Confirmar Contraseña', 'reg_btn': 'Registrar',
+                'has_account': '¿Ya tienes cuenta?', 'login_now': 'Entrar', 'projects_title': 'Mis Proyectos',
+                'cloud_saved': 'Guardados en la Nube', 'th_name': 'Nombre del Proyecto', 'th_date': 'Fecha de Creación', 'th_actions': 'Acciones',
+                'opacity': 'Opacidad', 'tooltip_add_wire': 'Añadir Cable', 'tooltip_bend_wire': 'Doblar Cable', 'tooltip_cut_wire': 'Cortar Cable',
+                'tooltip_catalog': 'Catálogo', 'tooltip_undo': 'Deshacer', 'tooltip_redo': 'Rehacer', 'tooltip_smart': 'Modo de Selección Inteligente',
+                'tooltip_wire': 'Herramientas de Cable', 'tooltip_text': 'Añadir Texto', 'tooltip_delete': 'Eliminar Seleccionado',
+                'tooltip_save': 'Guardar Proyecto', 'tooltip_projects': 'Proyectos Guardados', 'tooltip_export': 'Exportar Imagen/PDF',
+                'tooltip_clear': 'Limpiar Área', 'tooltip_logout': 'Salir', 'wire_props': 'Propiedades del Cable', 'color': 'Color:',
+                'thick': 'Grosor:', 'style': 'Estilo:', 'layer': 'Capa:', 'cat_title': 'Catálogo de Elementos',
+                'search_comp': 'Buscar componente...', 'cat_empty': 'El catálogo está vacío.', 'btn_close': 'Cerrar',
+                'new_comp': 'Nuevo Componente', 'btn_undo': 'Deshacer', 'btn_cancel': 'Cancelar', 'btn_confirm': 'Guardar y Añadir',
+                'text_title': 'Texto', 'content': 'Contenido', 'font': 'Fuente', 'size': 'Tamaño', 'text_color': 'Texto', 'bg_color': 'Fondo',
+                'btn_apply': 'Aplicar', 'clear_title': '¿Limpiar Área de Trabajo?', 'btn_yes_clear': 'Sí, limpiar', 'export_title': 'Exportar Proyecto',
+                'prof_title': 'Perfil y Configuraciones', 'prof_pic': 'Foto de Perfil', 'btn_change_pic': 'Cambiar Foto', 'prof_lang': 'Idioma',
+                'prof_sec': 'Seguridad - Cambiar Contraseña', 'pass_curr': 'Contraseña Actual', 'pass_new': 'Nueva Contraseña', 'pass_conf': 'Confirmar Nueva Contraseña',
+                'btn_change_pass': 'Actualizar Contraseña', 'alert_saved': '¡Proyecto guardado en la nube!', 'alert_loaded': '¡Proyecto cargado!',
+                'alert_cleared': 'Área de trabajo limpia.', 'alert_exported': 'Proyecto exportado como ', 'alert_pass_changed': '¡Contraseña cambiada con éxito!',
+                'alert_pass_wrong': 'Contraseña actual incorrecta.', 'alert_pass_nomatch': 'Las contraseñas no coinciden.', 'alert_fill_all': 'Llene todos los campos.',
+                'alert_pic_updated': '¡Foto de perfil actualizada!', 'comp_utilizados': 'Componentes Utilizados:', 'sem_desc': 'Sin descripción', 'nenhum_comp': 'No se encontraron componentes con descripción.',
+                'dynamic': {
+                    'Painéis Elétricos': 'Paneles Eléctricos', 'Painel Elétrico': 'Panel Eléctrico', 'Painel Eletrico': 'Panel Eléctrico',
+                    'Contatores de Potência': 'Contactores de Potencia', 'Contator de Potência': 'Contactor de Potencia',
+                    'Relés de Voltagem': 'Relés de Voltaje', 'Relé de Voltagem': 'Relé de Voltaje',
+                    'Reles de Voltagem': 'Relés de Voltaje', 'Rele de Voltagem': 'Relé de Voltaje',
+                    'Ralé de Voltagem': 'Relé de Voltaje', 'Ralé de voltagem': 'Relé de Voltaje',
+                    'Relés de Tensão': 'Relés de Tensión', 'Relé de Tensão': 'Relé de Tensión',
+                    'Reles de Tensao': 'Relés de Tensión', 'Rele de Tensao': 'Relé de Tensión',
+                    'Disjuntores-Motor': 'Disyuntores de Motor', 'Disjuntor-Motor': 'Disyuntor de Motor',
+                    'Disjuntores de Motor': 'Disyuntores de Motor', 'Disjuntor de Motor': 'Disyuntor de Motor',
+                    'Fontes de Alimentação': 'Fuentes de Alimentación', 'Fonte de Alimentação': 'Fuente de Alimentación',
+                    'Bornes de Passagem': 'Bornes de Paso', 'Borne de Passagem': 'Borne de Paso',
+                    'Infraestrutura': 'Infraestructura',
+                    'Disjuntores': 'Disyuntores', 'Disjuntor': 'Disyuntor',
+                    'Contatores': 'Contactores', 'Contator': 'Contactor',
+                    'Relés': 'Relés', 'Relé': 'Relé', 'Reles': 'Relés', 'Rele': 'Relé', 'Ralé': 'Relé',
+                    'Motores': 'Motores', 'Motor': 'Motor',
+                    'Trilhos': 'Carriles DIN', 'Trilho': 'Carril DIN',
+                    'Fontes': 'Fuentes', 'Fonte': 'Fuente',
+                    'Bornes': 'Bornes', 'Borne': 'Borne',
+                    'Botões': 'Botones', 'Botão': 'Botón', 'Botoes': 'Botones', 'Botao': 'Botón',
+                    'Sinaleiros': 'Luces Piloto', 'Sinaleiro': 'Luz Piloto',
+                    'Chaves': 'Interruptores', 'Chave': 'Interruptor',
+                    'Comandos': 'Mandos', 'Comando': 'Mando',
+                    'Potência': 'Potencia', 'Potencia': 'Potencia',
+                    'Tensão': 'Tensión', 'Tensao': 'Tensión', 'Voltagem': 'Voltaje',
+                    'Corrente': 'Corriente',
+                    'Proteção': 'Protección', 'Protecao': 'Protección',
+                    'Acessórios': 'Accesorios', 'Acessorios': 'Accesorios',
+                    'Geral': 'General', 'Categoria': 'Categoría',
+                    'Fios': 'Cables', 'Fio': 'Cable',
+                    'Cabos': 'Cables', 'Cabo': 'Cable',
+                    '3 fases': '3 fases', '1 fase': '1 fase', 'Fases': 'Fases', 'Fase': 'Fase'
+                }
+            }
+        };
+
+        function t(key) { return i18nDict[currentLang][key] || key; }
+
+        function aplicarIdiomaInterface() {
+            document.querySelectorAll('[data-i18n]').forEach(el => { if(i18nDict[currentLang][el.getAttribute('data-i18n')]) el.innerHTML = i18nDict[currentLang][el.getAttribute('data-i18n')]; });
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => { if(i18nDict[currentLang][el.getAttribute('data-i18n-ph')]) el.placeholder = i18nDict[currentLang][el.getAttribute('data-i18n-ph')]; });
+            document.querySelectorAll('[data-i18n-tt]').forEach(el => { if(i18nDict[currentLang][el.getAttribute('data-i18n-tt')]) el.setAttribute('data-tooltip', i18nDict[currentLang][el.getAttribute('data-i18n-tt')]); });
+            if(document.getElementById('modalAdd').style.display === 'flex' || document.getElementById('modalAdd').style.opacity === '1') {
+                renderizarCatalogo(document.getElementById('searchInput').value);
+            }
+        }
+
+        function alterarIdiomaConfig(lang) {
+            currentLang = lang;
+            if(currentActiveUser) { currentActiveUser.lang = lang; saveDBUsers(usersDB); }
+            aplicarIdiomaInterface();
+        }
+
+        /* Dicionário Dinâmico Seguro para Acentos do Português */
+        function translateDynamic(text) {
+            if (!text) return text;
+            if (currentLang === 'pt' || !i18nDict[currentLang].dynamic) return text;
+            
+            let translated = text;
+            const dict = i18nDict[currentLang].dynamic;
+            const keys = Object.keys(dict).sort((a, b) => b.length - a.length);
+
+            for (const ptTerm of keys) {
+                const regex = new RegExp(`(^|[^A-Za-zÀ-ÖØ-öø-ÿ0-9_])(${ptTerm})([^A-Za-zÀ-ÖØ-öø-ÿ0-9_]|$)`, 'gi');
+                translated = translated.replace(regex, (match, p1, p2, p3) => {
+                    let trans = dict[ptTerm];
+                    if (p2[0] === p2[0].toUpperCase()) {
+                        trans = trans.charAt(0).toUpperCase() + trans.slice(1);
+                    } else {
+                        trans = trans.toLowerCase();
+                    }
+                    return p1 + trans + p3;
+                });
+            }
+            return translated;
+        }
+
+        function isModalOpen() {
+            let modals = document.querySelectorAll('.modal-overlay');
+            for(let m of modals) { if(m.style.display === 'flex' || m.style.opacity === '1') return true; }
+            return false;
+        }
+
         let db = null; let isFirebaseOnline = false;
         try {
             const firebaseConfig = { apiKey: "AIzaSyAianv3aK19_Qk_wF_NtDgDYUKJCQXwB2A", authDomain: "aplicativoeletrica.firebaseapp.com", databaseURL: "https://aplicativoeletrica-default-rtdb.firebaseio.com", projectId: "aplicativoeletrica", storageBucket: "aplicativoeletrica.firebasestorage.app", messagingSenderId: "714803968526", appId: "1:714803968526:web:d9846b7c66f164637ada5f" };
@@ -456,9 +717,12 @@
                     aplicarPermissoes();
                     let autosave = localStorage.getItem('sim_autosave');
                     if (autosave) { try { carregarEstado(autosave); } catch(e){} }
+                    entrarNoApp();
                 } else {
                     fazerLogout(true);
                 }
+            } else {
+                aplicarIdiomaInterface();
             }
         }
 
@@ -486,7 +750,7 @@
         
         function fazerLogin() {
             const userOrEmail = document.getElementById('loginUser').value.trim(); const pass = document.getElementById('loginPass').value;
-            if (!userOrEmail || !pass) { mostrarAviso('Preencha todos os campos.', 'erro'); return; }
+            if (!userOrEmail || !pass) { mostrarAviso(t('alert_fill_all'), 'erro'); return; }
 
             if (userOrEmail === 'DESENVOLVEDOR') {
                 if (usersDB['DESENVOLVEDOR'] && usersDB['DESENVOLVEDOR'].pass === pass) {
@@ -532,15 +796,15 @@
                 if (error.code === 'auth/unauthorized-domain') {
                     mostrarAviso('Domínio não autorizado. O Desenvolvedor precisa adicionar o site no painel do Firebase.', 'erro');
                 } else if (error.code !== 'auth/popup-closed-by-user') {
-                    mostrarAviso('Erro no login com Google: ' + error.message, 'erro');
+                    mostrarAviso('Erro no login con Google: ' + error.message, 'erro');
                 }
             });
         }
 
         function fazerRegistro() {
             const email = document.getElementById('regUser').value.trim(); const pass = document.getElementById('regPass').value; const conf = document.getElementById('regPassConf').value;
-            if (!email || !pass || !conf) { mostrarAviso('Preencha todos os campos.', 'erro'); return; }
-            if (pass !== conf) { mostrarAviso('As senhas não coincidem.', 'erro'); return; }
+            if (!email || !pass || !conf) { mostrarAviso(t('alert_fill_all'), 'erro'); return; }
+            if (pass !== conf) { mostrarAviso(t('alert_pass_nomatch'), 'erro'); return; }
             if (pass.length < 6) { mostrarAviso('A senha deve ter pelo menos 6 caracteres.', 'erro'); return; }
 
             if (isFirebaseOnline) {
@@ -560,8 +824,37 @@
             } else { mostrarAviso('Sistema offline. Cadastro indisponível.', 'erro'); }
         }
 
+        function atualizarInfosPerfilUI() {
+            if (!currentActiveUser) return;
+            const floatImg = document.getElementById('profileFloatImg');
+            const floatInit = document.getElementById('profileFloatInitial');
+            const prevImg = document.getElementById('profilePreviewImg');
+            const prevInit = document.getElementById('profilePreviewInit');
+            
+            let initial = currentActiveUser.username ? currentActiveUser.username.charAt(0).toUpperCase() : 'U';
+            floatInit.innerText = initial; prevInit.innerText = initial;
+            
+            if (currentActiveUser.profilePic) {
+                floatImg.src = currentActiveUser.profilePic; prevImg.src = currentActiveUser.profilePic;
+                floatImg.style.display = 'block'; prevImg.style.display = 'block';
+                floatInit.style.display = 'none'; prevInit.style.display = 'none';
+            } else {
+                floatImg.style.display = 'none'; prevImg.style.display = 'none';
+                floatInit.style.display = 'block'; prevInit.style.display = 'block';
+            }
+        }
+
         function entrarNoApp() {
-            document.getElementById('authScreen').style.opacity = '0'; document.getElementById('canvasWrapper').classList.remove('blurred'); setTimeout(() => document.getElementById('authScreen').style.display = 'none', 300); mostrarAviso(`Bem-vindo, ${currentActiveUser.username}!`, 'sucesso');
+            document.getElementById('authScreen').style.opacity = '0'; document.getElementById('canvasWrapper').classList.remove('blurred'); 
+            setTimeout(() => document.getElementById('authScreen').style.display = 'none', 300); 
+            document.getElementById('profileFloatBtn').style.display = 'flex';
+            
+            if (currentActiveUser.lang) alterarIdiomaConfig(currentActiveUser.lang);
+            else aplicarIdiomaInterface();
+
+            atualizarInfosPerfilUI();
+            
+            mostrarAviso(`Bem-vindo, ${currentActiveUser.username}!`, 'sucesso');
             aplicarPermissoes();
             let autosave = localStorage.getItem('sim_autosave');
             if (autosave) { try { carregarEstado(autosave); } catch(e){} }
@@ -578,20 +871,78 @@
             currentActiveUser = null; 
             localStorage.removeItem('sim_session'); 
             if(isFirebaseOnline) firebase.auth().signOut();
+            document.getElementById('profileFloatBtn').style.display = 'none';
             document.getElementById('authScreen').style.display = 'flex'; document.getElementById('canvasWrapper').classList.add('blurred'); setTimeout(() => document.getElementById('authScreen').style.opacity = '1', 10); mudarAuthView('login'); 
-            if(!silent) mostrarAviso('Sessão encerrada.', 'info'); 
+            if(!silent) mostrarAviso(t('tooltip_logout'), 'info'); 
         }
 
-        function salvarProjeto() { const nome = prompt("Digite o nome para salvar o projeto:"); if (!nome || nome.trim() === '') return; const projId = 'proj_' + Date.now(); const payload = { nome: nome.trim(), dataStr: JSON.stringify(getEstadoAtual()), timestamp: Date.now() }; if (isFirebaseOnline) { try { db.ref(`sim_projects/${currentActiveUser.username}/${projId}`).set(payload).then(() => mostrarAviso("Projeto salvo na nuvem!", "sucesso")).catch(e => { salvarProjetoLocalFallback(projId, payload); }); } catch(e) { salvarProjetoLocalFallback(projId, payload); } } else { salvarProjetoLocalFallback(projId, payload); } }
-        function salvarProjetoLocalFallback(projId, payload) { let allProj = JSON.parse(localStorage.getItem('sim_projects_local')) || {}; if(!allProj[currentActiveUser.username]) allProj[currentActiveUser.username] = {}; allProj[currentActiveUser.username][projId] = payload; localStorage.setItem('sim_projects_local', JSON.stringify(allProj)); mostrarAviso("Projeto salvo localmente (Modo Offline).", "sucesso"); fallbackLocalProjects(); }
+        function abrirModalPerfil() {
+            if(currentActiveUser && currentActiveUser.lang) document.getElementById('langSelector').value = currentActiveUser.lang;
+            else document.getElementById('langSelector').value = currentLang;
+            
+            document.getElementById('passAtual').value = ''; document.getElementById('passNova').value = ''; document.getElementById('passConf').value = '';
+            document.getElementById('modalProfile').style.display = 'flex';
+            setTimeout(() => { document.getElementById('modalProfile').style.opacity = '1'; }, 10);
+        }
+        function fecharModalPerfil() { document.getElementById('modalProfile').style.opacity = '0'; setTimeout(() => document.getElementById('modalProfile').style.display = 'none', 200); }
+
+        function alterarFotoPerfil(event) {
+            const file = event.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imgData = e.target.result;
+                    currentActiveUser.profilePic = imgData;
+                    saveDBUsers(usersDB);
+                    atualizarInfosPerfilUI();
+                    mostrarAviso(t('alert_pic_updated'), 'sucesso');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function alterarSenha() {
+            const atual = document.getElementById('passAtual').value;
+            const nova = document.getElementById('passNova').value;
+            const conf = document.getElementById('passConf').value;
+            if(!atual || !nova || !conf) { mostrarAviso(t('alert_fill_all'), 'erro'); return; }
+            if(nova !== conf) { mostrarAviso(t('alert_pass_nomatch'), 'erro'); return; }
+
+            if (currentActiveUser.username === 'DESENVOLVEDOR') {
+                if(usersDB['DESENVOLVEDOR'].pass === atual) {
+                    usersDB['DESENVOLVEDOR'].pass = nova; saveDBUsers(usersDB);
+                    mostrarAviso(t('alert_pass_changed'), 'sucesso'); fecharModalPerfil();
+                } else { mostrarAviso(t('alert_pass_wrong'), 'erro'); }
+                return;
+            }
+
+            if(isFirebaseOnline && firebase.auth().currentUser) {
+                const user = firebase.auth().currentUser;
+                const cred = firebase.auth.EmailAuthProvider.credential(user.email, atual);
+                user.reauthenticateWithCredential(cred).then(() => {
+                    user.updatePassword(nova).then(() => {
+                        if(usersDB[currentActiveUser.username]) { usersDB[currentActiveUser.username].pass = nova; saveDBUsers(usersDB); }
+                        mostrarAviso(t('alert_pass_changed'), 'sucesso'); fecharModalPerfil();
+                    }).catch(e => mostrarAviso("Erro: " + e.message, 'erro'));
+                }).catch(e => mostrarAviso(t('alert_pass_wrong'), 'erro'));
+            } else {
+                if(usersDB[currentActiveUser.username] && usersDB[currentActiveUser.username].pass === atual) {
+                    usersDB[currentActiveUser.username].pass = nova; saveDBUsers(usersDB);
+                    mostrarAviso(t('alert_pass_changed'), 'sucesso'); fecharModalPerfil();
+                } else { mostrarAviso(t('alert_pass_wrong'), 'erro'); }
+            }
+        }
+
+        function salvarProjeto() { const nome = prompt("Digite o nome para salvar o projeto:"); if (!nome || nome.trim() === '') return; const projId = 'proj_' + Date.now(); const payload = { nome: nome.trim(), dataStr: JSON.stringify(getEstadoAtual()), timestamp: Date.now() }; if (isFirebaseOnline) { try { db.ref(`sim_projects/${currentActiveUser.username}/${projId}`).set(payload).then(() => mostrarAviso(t('alert_saved'), "sucesso")).catch(e => { salvarProjetoLocalFallback(projId, payload); }); } catch(e) { salvarProjetoLocalFallback(projId, payload); } } else { salvarProjetoLocalFallback(projId, payload); } }
+        function salvarProjetoLocalFallback(projId, payload) { let allProj = JSON.parse(localStorage.getItem('sim_projects_local')) || {}; if(!allProj[currentActiveUser.username]) allProj[currentActiveUser.username] = {}; allProj[currentActiveUser.username][projId] = payload; localStorage.setItem('sim_projects_local', JSON.stringify(allProj)); mostrarAviso(t('alert_saved'), "sucesso"); fallbackLocalProjects(); }
         function abrirModalProjetos() { renderProjectsTable(); document.getElementById('modalProjects').style.display = 'flex'; setTimeout(() => { document.getElementById('modalProjects').style.opacity = '1'; }, 10); }
         function fecharModalProjetos() { document.getElementById('modalProjects').style.opacity = '0'; setTimeout(() => document.getElementById('modalProjects').style.display = 'none', 300); }
         function renderProjectsTable() {
             const tbody = document.getElementById('projectsTableBody'); tbody.innerHTML = ''; const sortedProjects = Object.entries(myProjectsDB).sort((a, b) => b[1].timestamp - a[1].timestamp);
-            for (const [id, data] of sortedProjects) { let dateStr = new Date(data.timestamp).toLocaleString('pt-BR'); let actionHtml = `<button class="action-btn load" onclick="carregarProjetoId('${id}')" title="Abrir Projeto"><i class="ph ph-folder-open"></i></button><button class="action-btn delete" onclick="excluirProjetoId('${id}')" title="Excluir"><i class="ph ph-trash"></i></button>`; tbody.innerHTML += `<tr><td style="font-weight: 600; color: var(--primary);">${data.nome}</td><td>${dateStr}</td><td style="text-align: right; white-space: nowrap;">${actionHtml}</td></tr>`; }
+            for (const [id, data] of sortedProjects) { let dateStr = new Date(data.timestamp).toLocaleString(); let actionHtml = `<button class="action-btn load" onclick="carregarProjetoId('${id}')" title="Abrir Projeto"><i class="ph ph-folder-open"></i></button><button class="action-btn delete" onclick="excluirProjetoId('${id}')" title="Excluir"><i class="ph ph-trash"></i></button>`; tbody.innerHTML += `<tr><td style="font-weight: 600; color: var(--primary);">${data.nome}</td><td>${dateStr}</td><td style="text-align: right; white-space: nowrap;">${actionHtml}</td></tr>`; }
             if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum projeto salvo encontrado.</td></tr>';
         }
-        function carregarProjetoId(id) { if(myProjectsDB[id] && myProjectsDB[id].dataStr) { limparSimulador(true); carregarEstado(myProjectsDB[id].dataStr); fecharModalProjetos(); mostrarAviso(`Projeto "${myProjectsDB[id].nome}" carregado!`, "sucesso"); } }
+        function carregarProjetoId(id) { if(myProjectsDB[id] && myProjectsDB[id].dataStr) { limparSimulador(true); carregarEstado(myProjectsDB[id].dataStr); fecharModalProjetos(); mostrarAviso(t('alert_loaded'), "sucesso"); } }
         function excluirProjetoId(id) { if(confirm("Tem certeza que deseja excluir este projeto?")) { if(isFirebaseOnline) { try { db.ref(`sim_projects/${currentActiveUser.username}/${id}`).remove(); } catch(e) { excluirProjetoLocalFallback(id); } } else { excluirProjetoLocalFallback(id); } } }
         function excluirProjetoLocalFallback(id) { let allProj = JSON.parse(localStorage.getItem('sim_projects_local')) || {}; if(allProj[currentActiveUser.username] && allProj[currentActiveUser.username][id]) { delete allProj[currentActiveUser.username][id]; localStorage.setItem('sim_projects_local', JSON.stringify(allProj)); fallbackLocalProjects(); } }
 
@@ -620,7 +971,10 @@
         const canvas = document.getElementById('simuladorCanvas'); const ctx = canvas.getContext('2d');
         function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; atualizarTela(); } window.addEventListener('resize', resizeCanvas); setTimeout(resizeCanvas, 50);
         function mudarZoom(delta) { let prevZoom = camera.zoom; camera.zoom = Math.max(0.2, Math.min(4, camera.zoom + delta)); let cx = canvas.width / 2; let cy = canvas.height / 2; camera.x = cx - (cx - camera.x) * (camera.zoom / prevZoom); camera.y = cy - (cy - camera.y) * (camera.zoom / prevZoom); atualizarMenuFlutuante(); atualizarTela(); }
-        canvas.addEventListener('wheel', (e) => { e.preventDefault(); let delta = e.deltaY > 0 ? -0.1 : 0.1; let prevZoom = camera.zoom; camera.zoom = Math.max(0.2, Math.min(4, camera.zoom + delta)); camera.x = e.clientX - (e.clientX - camera.x) * (camera.zoom / prevZoom); camera.y = e.clientY - (e.clientY - camera.y) * (camera.zoom / prevZoom); atualizarMenuFlutuante(); atualizarTela(); }, {passive: false});
+        canvas.addEventListener('wheel', (e) => { 
+            if (isModalOpen()) return;
+            e.preventDefault(); let delta = e.deltaY > 0 ? -0.1 : 0.1; let prevZoom = camera.zoom; camera.zoom = Math.max(0.2, Math.min(4, camera.zoom + delta)); camera.x = e.clientX - (e.clientX - camera.x) * (camera.zoom / prevZoom); camera.y = e.clientY - (e.clientY - camera.y) * (camera.zoom / prevZoom); atualizarMenuFlutuante(); atualizarTela(); 
+        }, {passive: false});
 
         let componentes = []; let fios = []; let historico = []; let historicoRefazer = []; let terminalAtivo = null;
 
@@ -695,7 +1049,22 @@
         }
 
         let customTempImg = null; let customTempTerminais = [];
-        function abrirCriador() { fecharModal(); let dl = document.getElementById('catList'); dl.innerHTML = ''; Object.keys(CATALOGO).forEach(cat => { let opt = document.createElement('option'); opt.value = cat; dl.appendChild(opt); }); document.getElementById('modalCreator').style.display = 'flex'; setTimeout(() => { document.getElementById('modalCreator').style.opacity = '1'; }, 10); limparBornesCustom(); document.getElementById('customCompName').value = ''; document.getElementById('customCompCategory').value = ''; document.getElementById('creatorImage').style.display = 'none'; document.getElementById('uploadPlaceholder').style.display = 'flex'; }
+        function abrirCriador() { 
+            fecharModal(); let dl = document.getElementById('catList'); dl.innerHTML = ''; 
+            Object.keys(CATALOGO).forEach(cat => { 
+                let opt = document.createElement('option'); 
+                opt.value = cat; 
+                dl.appendChild(opt); 
+            }); 
+            document.getElementById('modalCreator').style.display = 'flex'; 
+            setTimeout(() => { document.getElementById('modalCreator').style.opacity = '1'; }, 10); 
+            limparBornesCustom(); 
+            document.getElementById('customCompName').value = ''; 
+            document.getElementById('customCompCategory').value = ''; 
+            document.getElementById('customCompDesc').value = ''; 
+            document.getElementById('creatorImage').style.display = 'none'; 
+            document.getElementById('uploadPlaceholder').style.display = 'flex'; 
+        }
         function fecharCriador() { document.getElementById('modalCreator').style.opacity = '0'; setTimeout(() => document.getElementById('modalCreator').style.display = 'none', 200); }
         
         function carregarImagemCustom(event) { 
@@ -724,11 +1093,18 @@
         function desenharBornesPreview() { const canvas = document.getElementById('creatorCanvas'); const imgEl = document.getElementById('creatorImage'); const rect = imgEl.parentElement.getBoundingClientRect(); canvas.width = rect.width; canvas.height = rect.height; const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); if(!customTempImg) return; const renderW = imgEl.width; const renderH = imgEl.height; const offsetX = (rect.width - renderW)/2; const offsetY = (rect.height - renderH)/2; document.getElementById('terminalCount').innerText = `Terminais marcados: ${customTempTerminais.length}`; customTempTerminais.forEach(t => { const x = offsetX + (t.px * renderW); const y = offsetY + (t.py * renderH); ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke(); }); }
         
         function salvarComponenteCustom() { 
-            let rawNome = document.getElementById('customCompName').value.trim(); let rawCat = document.getElementById('customCompCategory').value.trim(); 
+            let rawNome = document.getElementById('customCompName').value.trim(); 
+            let rawCat = document.getElementById('customCompCategory').value.trim(); 
+            let rawDesc = document.getElementById('customCompDesc').value.trim();
+
             if(!rawNome || !customTempImg) { mostrarAviso("Dê um nome e carregue uma imagem!", "erro"); return; } 
             if(!rawCat) { mostrarAviso("Defina uma categoria para o componente!", "erro"); return; }
             
-            const nome = sanitizeFB(rawNome); const catSelected = sanitizeFB(rawCat);
+            // TRADUÇÃO MÁGICA: Se o app estiver em inglês, ele converte o que foi escrito em português
+            // diretamente para o inglês antes de salvar no banco de dados!
+            const nome = sanitizeFB(translateDynamic(rawNome)); 
+            const catSelected = sanitizeFB(translateDynamic(rawCat));
+            const descFinal = translateDynamic(rawDesc);
             
             Object.keys(CATALOGO).forEach(cat => { if (CATALOGO[cat] && !Array.isArray(CATALOGO[cat])) CATALOGO[cat] = Object.values(CATALOGO[cat]); });
             let existe = false; Object.values(CATALOGO).forEach(lista => { if(lista && lista.includes(nome)) existe = true; }); 
@@ -739,7 +1115,10 @@
                 let baseW = imgObj.width; let baseH = imgObj.height; 
                 if(baseW > 250) { let ratio = 250/baseW; baseW = 250; baseH = baseH * ratio; } 
                 let bBox = calcularBBox(imgObj);
-                DB_CUSTOM[nome] = { src: customTempImg, terminais: customTempTerminais || [], w: baseW, h: baseH, bBox: bBox }; 
+                
+                // SALVANDO A DESCRIÇÃO JUNTO COM O COMPONENTE
+                DB_CUSTOM[nome] = { src: customTempImg, terminais: customTempTerminais || [], w: baseW, h: baseH, bBox: bBox, desc: descFinal }; 
+                
                 if(!CATALOGO[catSelected]) CATALOGO[catSelected] = []; if(!Array.isArray(CATALOGO[catSelected])) CATALOGO[catSelected] = Object.values(CATALOGO[catSelected]); CATALOGO[catSelected].push(nome); 
                 saveCustomComponents(); mostrarAviso(`Componente "${nome}" criado com sucesso!`, 'sucesso'); renderizarCatalogo(document.getElementById('searchInput').value); fecharCriador(); abrirModal(); 
             }; 
@@ -827,17 +1206,30 @@
                     Object.keys(CATALOGO).forEach(categoria => { 
                         if (CATALOGO[categoria] && !Array.isArray(CATALOGO[categoria])) CATALOGO[categoria] = Object.values(CATALOGO[categoria]);
                         if(Array.isArray(CATALOGO[categoria])) {
-                            let catMatch = removerAcentos(categoria).includes(termoBusca);
-                            let itensFiltrados = CATALOGO[categoria].filter(item => item && (catMatch || removerAcentos(item).includes(termoBusca))); 
+                            
+                            let catTranslated = translateDynamic(categoria);
+                            let catMatch = removerAcentos(catTranslated).includes(termoBusca) || removerAcentos(categoria).includes(termoBusca);
+                            
+                            let itensFiltrados = CATALOGO[categoria].filter(item => {
+                                if(!item) return false;
+                                let itemTranslated = translateDynamic(item);
+                                return (catMatch || removerAcentos(itemTranslated).includes(termoBusca) || removerAcentos(item).includes(termoBusca));
+                            }); 
+                            
                             if(itensFiltrados.length > 0) { 
                                 temItens = true; let groupDiv = document.createElement('div'); groupDiv.className = 'category-group'; 
-                                let title = document.createElement('div'); title.className = 'category-title'; title.innerText = categoria; groupDiv.appendChild(title); 
+                                let title = document.createElement('div'); title.className = 'category-title'; 
+                                title.innerText = catTranslated;
+                                groupDiv.appendChild(title); 
+                                
                                 let grid = document.createElement('div'); grid.className = 'component-grid'; 
                                 itensFiltrados.forEach(item => { 
                                     if(DB_CUSTOM[item]) {
                                         const btn = document.createElement('div'); btn.className = 'comp-btn'; btn.onclick = () => inserirComponente(item); 
                                         const img = document.createElement('img'); img.src = DB_CUSTOM[item].src; 
-                                        const span = document.createElement('span'); span.innerText = item; 
+                                        const span = document.createElement('span'); 
+                                        span.innerText = translateDynamic(item);
+                                        
                                         btn.appendChild(img); btn.appendChild(span); 
                                         if(currentActiveUser && currentActiveUser.role === 'admin') { const delBtn = document.createElement('div'); delBtn.className = 'del-catalog-btn'; delBtn.innerHTML = '<i class="ph ph-trash"></i>'; delBtn.onclick = (e) => { e.stopPropagation(); excluirItemCatalogo(item, categoria); }; btn.appendChild(delBtn); }
                                         grid.appendChild(btn); 
@@ -921,7 +1313,7 @@
         function fecharExport() { document.getElementById('modalExport').style.opacity = '0'; setTimeout(() => document.getElementById('modalExport').style.display = 'none', 200); }
         function abrirModalConfirmarLimpeza() { document.getElementById('modalConfirmClear').style.display = 'flex'; setTimeout(() => { document.getElementById('modalConfirmClear').style.opacity = '1'; }, 10); }
 
-        function inserirComponente(nome) { salvarEstado(); let pt = toWorld(canvas.width/2, canvas.height/2); let initX = Math.round((pt.x - 24) / 24) * 24; let initY = Math.round((pt.y - 48) / 24) * 24; let comp = new Componente(initX, initY, nome); componentes.push(comp); componentesSelecionados.clear(); componentesSelecionados.add(comp); document.getElementById('btnMover').setAttribute('data-tooltip', 'Modo Inteligente'); atualizarMenuFlutuante(); atualizarTela(); fecharModal(); setFerramenta('mover'); }
+        function inserirComponente(nome) { salvarEstado(); let pt = toWorld(canvas.width/2, canvas.height/2); let initX = Math.round((pt.x - 24) / 24) * 24; let initY = Math.round((pt.y - 48) / 24) * 24; let comp = new Componente(initX, initY, nome); componentes.push(comp); componentesSelecionados.clear(); componentesSelecionados.add(comp); document.getElementById('btnMover').setAttribute('data-tooltip', t('tooltip_smart')); atualizarMenuFlutuante(); atualizarTela(); fecharModal(); setFerramenta('mover'); }
         
         function toggleLockSelected() { 
             if(componentesSelecionados.size > 0) { 
@@ -1029,6 +1421,7 @@
         function atualizarFioSelecionado() { if(!fioEditando) return; salvarEstado(); fioEditando.cor = document.getElementById('wireEditColor').value; fioEditando.espessura = parseInt(document.getElementById('wireThick').value); fioEditando.estilo = document.getElementById('wireStyle').value; fioEditando.z = document.getElementById('wireZ').value; atualizarTela(); triggerAutoSave(); }
 
         canvas.addEventListener('pointerdown', (e) => {
+            if (isModalOpen()) return;
             if(e.target.closest('#dpadControls') || e.target.closest('.bottom-dock') || e.target.closest('.zoom-dock')) return;
             canvas.setPointerCapture(e.pointerId); const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y;
 
@@ -1097,6 +1490,7 @@
         });
 
         canvas.addEventListener('pointermove', (e) => { 
+            if (isModalOpen()) return;
             const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y; 
             if(isPanning) { camera.x += e.clientX - panStartX; camera.y += e.clientY - panStartY; panStartX = e.clientX; panStartY = e.clientY; atualizarMenuFlutuante(); atualizarTela(); return; } 
             
@@ -1130,6 +1524,7 @@
         });
 
         canvas.addEventListener('pointerup', (e) => {
+            if (isModalOpen()) return;
             canvas.releasePointerCapture(e.pointerId); const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y;
             if (isResizing) { isResizing = false; resizeTarget = null; atualizarMenuFlutuante(); atualizarTela(); triggerAutoSave(); return; }
             if(isPanning) { isPanning = false; triggerAutoSave(); return; } if(handleArrasteFio) { handleArrasteFio = null; atualizarTela(); triggerAutoSave(); return; }
@@ -1146,12 +1541,15 @@
             triggerAutoSave();
         });
 
-        canvas.addEventListener('dblclick', (e) => { if(ferramentaAtual !== 'mover') return; const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y; for (let i = componentes.length - 1; i >= 0; i--) { let c = componentes[i]; if (c.isTexto && wx >= c.x && wx <= c.x + c.width && wy >= c.y && wy <= c.y + c.height) { abrirModalTexto(c); break; } } });
+        canvas.addEventListener('dblclick', (e) => { 
+            if (isModalOpen()) return;
+            if(ferramentaAtual !== 'mover') return; const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y; for (let i = componentes.length - 1; i >= 0; i--) { let c = componentes[i]; if (c.isTexto && wx >= c.x && wx <= c.x + c.width && wy >= c.y && wy <= c.y + c.height) { abrirModalTexto(c); break; } } 
+        });
 
         function limparSimulador(silent = false) { 
             componentes = []; fios = []; fioManipulado = null; terminalAtivo = null; componentesSelecionados.clear(); atualizarMenuFlutuante(); fecharMenuFio(); atualizarTela(); 
             salvarEstado(); 
-            if(!silent) mostrarAviso('Área de trabalho limpa.', 'info');
+            if(!silent) mostrarAviso(t('alert_cleared'), 'info');
         }
         
         function exportarProjeto(tipo) { 
@@ -1171,10 +1569,70 @@
             fios.filter(f => f.z === 'frente').forEach(f => f.desenhar(tCtx)); 
             tCtx.restore(); 
             
-            if(tipo === 'pdf') { const { jsPDF } = window.jspdf; const doc = new jsPDF({ orientation: bw > bh ? 'l' : 'p', unit: 'px', format: [bw, bh] }); doc.addImage(tC.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, bw, bh); doc.save('Painel_Eletrico.pdf'); } 
-            else { const link = document.createElement('a'); link.download = `Painel_Eletrico.${tipo}`; link.href = tC.toDataURL(`image/${tipo === 'jpg' ? 'jpeg' : 'png'}`); link.click(); } 
+            if(tipo === 'pdf') { 
+                const { jsPDF } = window.jspdf; 
+                // CRIAÇÃO DO PDF PROFISSIONAL EM A4
+                const doc = new jsPDF({ orientation: 'p', unit: 'px', format: 'a4' }); 
+                const pdfW = doc.internal.pageSize.getWidth();
+                const pdfH = doc.internal.pageSize.getHeight();
+                
+                const imgRatio = tC.width / tC.height;
+                const maxW = pdfW - 40;
+                const maxH = (pdfH / 2) - 40; // Imagem ocupando a metade superior
+                
+                let finalW = maxW;
+                let finalH = finalW / imgRatio;
+                if(finalH > maxH) {
+                    finalH = maxH;
+                    finalW = finalH * imgRatio;
+                }
+                
+                const xObj = (pdfW - finalW) / 2;
+                const yObj = 20;
+                
+                doc.addImage(tC.toDataURL('image/jpeg', 1.0), 'JPEG', xObj, yObj, finalW, finalH); 
+                
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
+                let textY = yObj + finalH + 30;
+                doc.text(t('comp_utilizados'), 20, textY);
+                
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "normal");
+                textY += 20;
+                
+                let usedComps = {};
+                componentes.forEach(c => {
+                    if(c.isCustom) {
+                        if(!usedComps[c.nome]) {
+                            usedComps[c.nome] = (DB_CUSTOM[c.nome] && DB_CUSTOM[c.nome].desc) ? DB_CUSTOM[c.nome].desc : t('sem_desc');
+                        }
+                    }
+                });
+                
+                const compKeys = Object.keys(usedComps);
+                if(compKeys.length === 0) {
+                    doc.text(t('nenhum_comp'), 20, textY);
+                } else {
+                    compKeys.forEach(nome => {
+                        let linha = `- ${translateDynamic(nome)}: ${translateDynamic(usedComps[nome])}`;
+                        let linhas = doc.splitTextToSize(linha, pdfW - 40);
+                        doc.text(linhas, 20, textY);
+                        textY += (linhas.length * 12) + 5;
+                        if(textY > pdfH - 30) {
+                            doc.addPage();
+                            textY = 30;
+                        }
+                    });
+                }
+                
+                doc.save('Painel_Eletrico.pdf'); 
+            } 
+            else { 
+                const link = document.createElement('a'); link.download = `Painel_Eletrico.${tipo}`; link.href = tC.toDataURL(`image/${tipo === 'jpg' ? 'jpeg' : 'png'}`); link.click(); 
+            } 
             fecharExport(); 
-            mostrarAviso(`Projeto exportado como ${tipo.toUpperCase()}`, 'sucesso');
+            mostrarAviso(t('alert_exported') + tipo.toUpperCase(), 'sucesso');
         }
 
         salvarEstado(); atualizarTela(); updateDpadOpacity();
