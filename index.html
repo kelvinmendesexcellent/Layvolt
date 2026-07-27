@@ -303,15 +303,23 @@
     </div>
 
     <div id="modalProjects" class="modal-overlay">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
                 <h2 class="modal-title" data-i18n="projects_title">Meus Projetos</h2>
                 <div style="color: var(--text-muted); font-size: 14px; font-weight: 600;"><i class="ph ph-folder-open"></i> <span data-i18n="cloud_saved">Salvos na Nuvem</span></div>
             </div>
-            <div class="modal-body" style="padding: 0; max-height: 60vh; overflow-y: auto;">
+            <div class="modal-body" style="padding: 0; max-height: 65vh; overflow-y: auto;">
                 <table class="data-table">
                     <thead><tr><th data-i18n="th_name">Nome do Projeto</th><th data-i18n="th_date">Data de Criação</th><th style="text-align: right;" data-i18n="th_actions">Ações</th></tr></thead>
                     <tbody id="projectsTableBody"></tbody>
+                </table>
+                <div style="padding: 20px 14px 8px; display:flex; align-items:center; justify-content:space-between; gap: 12px; border-top: 1px solid var(--border-color); margin-top: 8px;">
+                    <h3 style="margin:0; font-size:14px; font-weight:700; color: var(--text-color);" data-i18n="templates_title">Modelos Prontos</h3>
+                    <button id="btnSalvarModelo" class="btn-confirm" style="display:none; padding:8px 14px; font-size:12px; white-space:nowrap;" onclick="salvarComoModelo()"><i class="ph ph-plus"></i> <span data-i18n="btn_save_template">Salvar como Modelo</span></button>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th data-i18n="th_name">Nome do Projeto</th><th data-i18n="th_date">Data de Criação</th><th style="text-align: right;" data-i18n="th_actions">Ações</th></tr></thead>
+                    <tbody id="templatesTableBody"></tbody>
                 </table>
             </div>
             <div class="modal-footer"><button class="btn-close" onclick="fecharModalProjetos()" data-i18n="btn_close">Fechar</button></div>
@@ -506,7 +514,9 @@
                 'btn_change_pass': 'Atualizar Senha', 'alert_saved': 'Projeto salvo na nuvem!', 'alert_loaded': 'Projeto carregado!',
                 'alert_cleared': 'Área de trabalho limpa.', 'alert_exported': 'Projeto exportado como ', 'alert_pass_changed': 'Senha alterada com sucesso!',
                 'alert_pass_wrong': 'Senha atual incorreta.', 'alert_pass_nomatch': 'As senhas não coincidem.', 'alert_fill_all': 'Preencha todos os campos.',
-                'alert_pic_updated': 'Foto de perfil atualizada!', 'comp_utilizados': 'Componentes Utilizados:', 'sem_desc': 'Sem descrição', 'nenhum_comp': 'Nenhum componente com descrição encontrado.'
+                'alert_pic_updated': 'Foto de perfil atualizada!', 'comp_utilizados': 'Componentes Utilizados:', 'sem_desc': 'Sem descrição', 'nenhum_comp': 'Nenhum componente com descrição encontrado.',
+                'templates_title': 'Modelos Prontos', 'btn_save_template': 'Salvar como Modelo', 'templates_empty': 'Nenhum modelo disponível.',
+                'alert_template_saved': 'Modelo salvo para os usuários!', 'alert_template_loaded': 'Modelo carregado!', 'alert_template_deleted': 'Modelo excluído.'
             },
             'en': {
                 'auth_title': 'Login', 'auth_sub': 'Access Layvolt', 'email': 'Email', 'pass': 'Password', 'access': 'Login',
@@ -531,6 +541,8 @@
                 'alert_cleared': 'Workspace cleared.', 'alert_exported': 'Project exported as ', 'alert_pass_changed': 'Password successfully changed!',
                 'alert_pass_wrong': 'Wrong current password.', 'alert_pass_nomatch': 'Passwords do not match.', 'alert_fill_all': 'Fill all fields.',
                 'alert_pic_updated': 'Profile picture updated!', 'comp_utilizados': 'Used Components:', 'sem_desc': 'No description', 'nenhum_comp': 'No components with description found.',
+                'templates_title': 'Ready-made Templates', 'btn_save_template': 'Save as Template', 'templates_empty': 'No templates available.',
+                'alert_template_saved': 'Template saved for all users!', 'alert_template_loaded': 'Template loaded!', 'alert_template_deleted': 'Template deleted.',
                 'dynamic': {
                     'Painéis Elétricos': 'Electrical Panels', 'Painel Elétrico': 'Electrical Panel', 'Painel Eletrico': 'Electrical Panel', 
                     'Contatores de Potência': 'Power Contactors', 'Contator de Potência': 'Power Contactor',
@@ -589,6 +601,8 @@
                 'alert_cleared': 'Área de trabajo limpia.', 'alert_exported': 'Proyecto exportado como ', 'alert_pass_changed': '¡Contraseña cambiada con éxito!',
                 'alert_pass_wrong': 'Contraseña actual incorrecta.', 'alert_pass_nomatch': 'Las contraseñas no coinciden.', 'alert_fill_all': 'Llene todos los campos.',
                 'alert_pic_updated': '¡Foto de perfil actualizada!', 'comp_utilizados': 'Componentes Utilizados:', 'sem_desc': 'Sin descripción', 'nenhum_comp': 'No se encontraron componentes con descripción.',
+                'templates_title': 'Modelos Listos', 'btn_save_template': 'Guardar como Modelo', 'templates_empty': 'No hay modelos disponibles.',
+                'alert_template_saved': '¡Modelo guardado para los usuarios!', 'alert_template_loaded': '¡Modelo cargado!', 'alert_template_deleted': 'Modelo eliminado.',
                 'dynamic': {
                     'Painéis Elétricos': 'Paneles Eléctricos', 'Painel Elétrico': 'Panel Eléctrico', 'Painel Eletrico': 'Panel Eléctrico',
                     'Contatores de Potência': 'Contactores de Potencia', 'Contator de Potência': 'Contactor de Potencia',
@@ -639,7 +653,7 @@
 
         function alterarIdiomaConfig(lang) {
             currentLang = lang;
-            if(currentActiveUser) { currentActiveUser.lang = lang; saveDBUsers(usersDB); }
+            if(currentActiveUser) { currentActiveUser.lang = lang; if(usersDB[currentActiveUser.username]) usersDB[currentActiveUser.username].lang = lang; saveDBUsers(usersDB); }
             aplicarIdiomaInterface();
         }
 
@@ -667,6 +681,9 @@
             return translated;
         }
 
+        // Evita XSS ao inserir nomes de projetos/modelos definidos pelo usuário via innerHTML
+        function escapeHtml(str) { const div = document.createElement('div'); div.textContent = (str === null || str === undefined) ? '' : String(str); return div.innerHTML; }
+
         function isModalOpen() {
             let modals = document.querySelectorAll('.modal-overlay');
             for(let m of modals) { if(m.style.display === 'flex' || m.style.opacity === '1') return true; }
@@ -679,7 +696,7 @@
             firebase.initializeApp(firebaseConfig); db = firebase.database(); isFirebaseOnline = true;
         } catch (error) { console.warn("Erro ao iniciar Firebase. Usando armazenamento local."); isFirebaseOnline = false; }
 
-        let usersDB = {}; let CATALOGO = {}; let DB_CUSTOM = {}; let myProjectsDB = {};
+        let usersDB = {}; let CATALOGO = {}; let DB_CUSTOM = {}; let myProjectsDB = {}; let TEMPLATES_DB = {};
 
         function initData() {
             if (isFirebaseOnline) {
@@ -861,11 +878,15 @@
         }
 
         function aplicarPermissoes() {
-            if (currentActiveUser && currentActiveUser.role === 'admin') { document.getElementById('btnCriarCustom').style.display = 'block'; } else { document.getElementById('btnCriarCustom').style.display = 'none'; }
+            const isAdmin = !!(currentActiveUser && currentActiveUser.role === 'admin');
+            document.getElementById('btnCriarCustom').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('btnSalvarModelo').style.display = isAdmin ? 'inline-flex' : 'none';
             if(isFirebaseOnline && currentActiveUser) { db.ref('sim_projects/' + currentActiveUser.username).on('value', snap => { myProjectsDB = snap.exists() ? snap.val() : {}; if(document.getElementById('modalProjects').style.display === 'flex') renderProjectsTable(); }, err => fallbackLocalProjects()); } else { fallbackLocalProjects(); }
+            if(isFirebaseOnline && currentActiveUser) { db.ref('sim_templates').on('value', snap => { TEMPLATES_DB = snap.exists() ? snap.val() : {}; if(document.getElementById('modalProjects').style.display === 'flex') renderTemplatesTable(); }, err => fallbackLocalTemplates()); } else { fallbackLocalTemplates(); }
         }
 
         function fallbackLocalProjects() { if(!currentActiveUser) return; let allProj = JSON.parse(localStorage.getItem('sim_projects_local')) || {}; myProjectsDB = allProj[currentActiveUser.username] || {}; if(document.getElementById('modalProjects').style.display === 'flex') renderProjectsTable(); }
+        function fallbackLocalTemplates() { TEMPLATES_DB = JSON.parse(localStorage.getItem('sim_templates_local')) || {}; if(document.getElementById('modalProjects').style.display === 'flex') renderTemplatesTable(); }
         
         function fazerLogout(silent = false) { 
             currentActiveUser = null; 
@@ -893,6 +914,7 @@
                 reader.onload = function(e) {
                     const imgData = e.target.result;
                     currentActiveUser.profilePic = imgData;
+                    if(usersDB[currentActiveUser.username]) usersDB[currentActiveUser.username].profilePic = imgData;
                     saveDBUsers(usersDB);
                     atualizarInfosPerfilUI();
                     mostrarAviso(t('alert_pic_updated'), 'sucesso');
@@ -935,16 +957,49 @@
 
         function salvarProjeto() { const nome = prompt("Digite o nome para salvar o projeto:"); if (!nome || nome.trim() === '') return; const projId = 'proj_' + Date.now(); const payload = { nome: nome.trim(), dataStr: JSON.stringify(getEstadoAtual()), timestamp: Date.now() }; if (isFirebaseOnline) { try { db.ref(`sim_projects/${currentActiveUser.username}/${projId}`).set(payload).then(() => mostrarAviso(t('alert_saved'), "sucesso")).catch(e => { salvarProjetoLocalFallback(projId, payload); }); } catch(e) { salvarProjetoLocalFallback(projId, payload); } } else { salvarProjetoLocalFallback(projId, payload); } }
         function salvarProjetoLocalFallback(projId, payload) { let allProj = JSON.parse(localStorage.getItem('sim_projects_local')) || {}; if(!allProj[currentActiveUser.username]) allProj[currentActiveUser.username] = {}; allProj[currentActiveUser.username][projId] = payload; localStorage.setItem('sim_projects_local', JSON.stringify(allProj)); mostrarAviso(t('alert_saved'), "sucesso"); fallbackLocalProjects(); }
-        function abrirModalProjetos() { renderProjectsTable(); document.getElementById('modalProjects').style.display = 'flex'; setTimeout(() => { document.getElementById('modalProjects').style.opacity = '1'; }, 10); }
+        function abrirModalProjetos() { renderProjectsTable(); renderTemplatesTable(); document.getElementById('modalProjects').style.display = 'flex'; setTimeout(() => { document.getElementById('modalProjects').style.opacity = '1'; }, 10); }
         function fecharModalProjetos() { document.getElementById('modalProjects').style.opacity = '0'; setTimeout(() => document.getElementById('modalProjects').style.display = 'none', 300); }
         function renderProjectsTable() {
             const tbody = document.getElementById('projectsTableBody'); tbody.innerHTML = ''; const sortedProjects = Object.entries(myProjectsDB).sort((a, b) => b[1].timestamp - a[1].timestamp);
-            for (const [id, data] of sortedProjects) { let dateStr = new Date(data.timestamp).toLocaleString(); let actionHtml = `<button class="action-btn load" onclick="carregarProjetoId('${id}')" title="Abrir Projeto"><i class="ph ph-folder-open"></i></button><button class="action-btn delete" onclick="excluirProjetoId('${id}')" title="Excluir"><i class="ph ph-trash"></i></button>`; tbody.innerHTML += `<tr><td style="font-weight: 600; color: var(--primary);">${data.nome}</td><td>${dateStr}</td><td style="text-align: right; white-space: nowrap;">${actionHtml}</td></tr>`; }
+            for (const [id, data] of sortedProjects) { let dateStr = new Date(data.timestamp).toLocaleString(); let actionHtml = `<button class="action-btn load" onclick="carregarProjetoId('${id}')" title="Abrir Projeto"><i class="ph ph-folder-open"></i></button><button class="action-btn delete" onclick="excluirProjetoId('${id}')" title="Excluir"><i class="ph ph-trash"></i></button>`; tbody.innerHTML += `<tr><td style="font-weight: 600; color: var(--primary);">${escapeHtml(data.nome)}</td><td>${dateStr}</td><td style="text-align: right; white-space: nowrap;">${actionHtml}</td></tr>`; }
             if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum projeto salvo encontrado.</td></tr>';
         }
         function carregarProjetoId(id) { if(myProjectsDB[id] && myProjectsDB[id].dataStr) { limparSimulador(true); carregarEstado(myProjectsDB[id].dataStr); fecharModalProjetos(); mostrarAviso(t('alert_loaded'), "sucesso"); } }
         function excluirProjetoId(id) { if(confirm("Tem certeza que deseja excluir este projeto?")) { if(isFirebaseOnline) { try { db.ref(`sim_projects/${currentActiveUser.username}/${id}`).remove(); } catch(e) { excluirProjetoLocalFallback(id); } } else { excluirProjetoLocalFallback(id); } } }
         function excluirProjetoLocalFallback(id) { let allProj = JSON.parse(localStorage.getItem('sim_projects_local')) || {}; if(allProj[currentActiveUser.username] && allProj[currentActiveUser.username][id]) { delete allProj[currentActiveUser.username][id]; localStorage.setItem('sim_projects_local', JSON.stringify(allProj)); fallbackLocalProjects(); } }
+
+        // --- Modelos Prontos: painéis salvos pelo desenvolvedor (admin) e disponíveis para todos os usuários ---
+        function renderTemplatesTable() {
+            const tbody = document.getElementById('templatesTableBody'); if(!tbody) return; tbody.innerHTML = '';
+            const isAdmin = !!(currentActiveUser && currentActiveUser.role === 'admin');
+            const sortedTemplates = Object.entries(TEMPLATES_DB || {}).sort((a, b) => b[1].timestamp - a[1].timestamp);
+            for (const [id, data] of sortedTemplates) {
+                let dateStr = new Date(data.timestamp).toLocaleString();
+                let actionHtml = `<button class="action-btn load" onclick="carregarTemplateId('${id}')" title="Abrir Modelo"><i class="ph ph-folder-open"></i></button>`;
+                if (isAdmin) actionHtml += `<button class="action-btn delete" onclick="excluirTemplateId('${id}')" title="Excluir"><i class="ph ph-trash"></i></button>`;
+                tbody.innerHTML += `<tr><td style="font-weight: 600; color: var(--primary);">${escapeHtml(data.nome)}</td><td>${dateStr}</td><td style="text-align: right; white-space: nowrap;">${actionHtml}</td></tr>`;
+            }
+            if(tbody.innerHTML === '') tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 20px; color: var(--text-muted);">${t('templates_empty')}</td></tr>`;
+        }
+        function salvarComoModelo() {
+            if (!currentActiveUser || currentActiveUser.role !== 'admin') return;
+            const nome = prompt("Digite o nome do modelo (visível para todos os usuários):");
+            if (!nome || nome.trim() === '') return;
+            const tplId = 'tpl_' + Date.now();
+            const payload = { nome: nome.trim(), dataStr: JSON.stringify(getEstadoAtual()), timestamp: Date.now(), autor: currentActiveUser.username };
+            if (isFirebaseOnline) { try { db.ref(`sim_templates/${tplId}`).set(payload).then(() => mostrarAviso(t('alert_template_saved'), "sucesso")).catch(e => salvarTemplateLocalFallback(tplId, payload)); } catch(e) { salvarTemplateLocalFallback(tplId, payload); } }
+            else { salvarTemplateLocalFallback(tplId, payload); }
+        }
+        function salvarTemplateLocalFallback(tplId, payload) { let allTpl = JSON.parse(localStorage.getItem('sim_templates_local')) || {}; allTpl[tplId] = payload; localStorage.setItem('sim_templates_local', JSON.stringify(allTpl)); TEMPLATES_DB = allTpl; mostrarAviso(t('alert_template_saved'), "sucesso"); renderTemplatesTable(); }
+        function carregarTemplateId(id) { if(TEMPLATES_DB[id] && TEMPLATES_DB[id].dataStr) { limparSimulador(true); carregarEstado(TEMPLATES_DB[id].dataStr); fecharModalProjetos(); mostrarAviso(t('alert_template_loaded'), "sucesso"); } }
+        function excluirTemplateId(id) {
+            if (!currentActiveUser || currentActiveUser.role !== 'admin') return;
+            if (confirm("Tem certeza que deseja excluir este modelo para TODOS os usuários?")) {
+                if (isFirebaseOnline) { try { db.ref(`sim_templates/${id}`).remove().then(() => mostrarAviso(t('alert_template_deleted'), "info")); } catch(e) { excluirTemplateLocalFallback(id); } }
+                else { excluirTemplateLocalFallback(id); }
+            }
+        }
+        function excluirTemplateLocalFallback(id) { let allTpl = JSON.parse(localStorage.getItem('sim_templates_local')) || {}; delete allTpl[id]; localStorage.setItem('sim_templates_local', JSON.stringify(allTpl)); TEMPLATES_DB = allTpl; mostrarAviso(t('alert_template_deleted'), "info"); renderTemplatesTable(); }
 
         let camera = { x: 0, y: 0, zoom: 1 };
         function toWorld(scrX, scrY) { return { x: (scrX - camera.x) / camera.zoom, y: (scrY - camera.y) / camera.zoom }; }
@@ -1033,6 +1088,8 @@
         let ferramentaAtual = 'mover'; let desenhandoFio = false; let fioAtual = null; let nóArrastado = null; let fioEditando = null; 
         let componentesSelecionados = new Set(); let arrastandoGrupo = false; let dragOffsetX = 0; let dragOffsetY = 0;
         let isPanning = false; let panStartX = 0; let panStartY = 0; let fioManipulado = null; let handleArrasteFio = null;
+        // --- Suporte a gestos multi-toque (pinch-to-zoom com 2 dedos) ---
+        let activePointers = new Map(); let isPinching = false; let pinchStartDist = 0; let pinchStartZoom = 1; let pinchAnchorWorld = { x: 0, y: 0 };
 
         let isResizing = false; let resizeTarget = null;
 
@@ -1294,7 +1351,7 @@
         function mesclarSelecionados() { if (componentesSelecionados.size < 2) return; salvarEstado(); let gId = 'group_' + Date.now(); componentesSelecionados.forEach(c => { c.groupId = gId; }); mostrarAviso("Itens agrupados.", "sucesso"); atualizarMenuFlutuante(); atualizarTela(); }
         function desmesclarSelecionados() { salvarEstado(); componentesSelecionados.forEach(c => { c.groupId = null; }); mostrarAviso("Itens separados.", "sucesso"); atualizarMenuFlutuante(); atualizarTela(); }
 
-        function atualizarDpadVisibility() { const dpad = document.getElementById('dpadControls'); if ((ferramentaAtual === 'mover' && componentesSelecionados.size > 0) || (ferramentaAtual === 'fio' && (terminalAtivo || desenhandoFio))) { dpad.classList.add('active'); } else { dpad.classList.remove('active'); } }
+        function atualizarDpadVisibility() { const dpad = document.getElementById('dpadControls'); if ((componentesSelecionados.size > 0) || (ferramentaAtual === 'fio' && (terminalAtivo || desenhandoFio))) { dpad.classList.add('active'); } else { dpad.classList.remove('active'); } }
         
         function setFerramenta(nome) { 
             ferramentaAtual = nome; document.querySelectorAll('.tool-btn:not(.history-btn)').forEach(b => b.classList.remove('active')); 
@@ -1330,7 +1387,7 @@
             const menu = document.getElementById('floatActionMenu'); const hasSelection = componentesSelecionados.size > 0 || fioManipulado !== null;
             document.getElementById('btnDeleteSelectedToolbar').style.display = hasSelection ? 'flex' : 'none';
             
-            if(componentesSelecionados.size > 0 && ferramentaAtual === 'mover') { 
+            if(componentesSelecionados.size > 0) { 
                 let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                 componentesSelecionados.forEach(c => { let b = c.getBounds(); if(b.x < minX) minX = b.x; if(b.y < minY) minY = b.y; if(b.x + b.w > maxX) maxX = b.x + b.w; if(b.y + b.h > maxY) maxY = b.y + b.h; });
                 
@@ -1387,7 +1444,7 @@
 
         function dpadMove(dx, dy) { 
             const stepSize = 24; 
-            if (ferramentaAtual === 'mover' && componentesSelecionados.size > 0) { 
+            if (componentesSelecionados.size > 0) { 
                 salvarEstado(); componentesSelecionados.forEach(c => { if(!c.locked) { c.x += dx * stepSize; c.y += dy * stepSize; } }); atualizarMenuFlutuante(); atualizarTela(); triggerAutoSave();
             } else if (ferramentaAtual === 'fio' && (terminalAtivo || desenhandoFio)) {
                 if (!desenhandoFio && terminalAtivo) {
@@ -1405,7 +1462,7 @@
         }
 
         function dpadConfirm() { 
-            if (ferramentaAtual === 'mover' && componentesSelecionados.size > 0) { 
+            if (componentesSelecionados.size > 0) { 
                 componentesSelecionados.clear(); atualizarMenuFlutuante(); atualizarDpadVisibility(); atualizarTela(); triggerAutoSave();
             } else if (ferramentaAtual === 'fio' && desenhandoFio && fioAtual) {
                 let wx = fioAtual.endX; let wy = fioAtual.endY; let conectou = false;
@@ -1420,10 +1477,53 @@
         function fecharMenuFio() { fioEditando = null; document.getElementById('wirePropMenu').style.display = 'none'; atualizarTela(); }
         function atualizarFioSelecionado() { if(!fioEditando) return; salvarEstado(); fioEditando.cor = document.getElementById('wireEditColor').value; fioEditando.espessura = parseInt(document.getElementById('wireThick').value); fioEditando.estilo = document.getElementById('wireStyle').value; fioEditando.z = document.getElementById('wireZ').value; atualizarTela(); triggerAutoSave(); }
 
+        // Permite selecionar e mover qualquer componente com um toque/clique direto, independentemente
+        // da ferramenta ativa (fio, entortar, alicate...), sem precisar ativar a ferramenta de seleção antes.
+        function tentarSelecionarEArrastarComponente(wx, wy, e) {
+            let componentesReversos = [...componentes].reverse();
+            for (let c of componentesReversos) {
+                let b = c.getBounds();
+                if (wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h) {
+                    arrastandoGrupo = true; fecharMenuFio(); fioManipulado = null; dragOffsetX = wx; dragOffsetY = wy;
+                    if (!componentesSelecionados.has(c)) {
+                        if (!e.shiftKey) componentesSelecionados.clear();
+                        componentesSelecionados.add(c);
+                        if (c.groupId) { componentes.forEach(gC => { if (gC.groupId === c.groupId) componentesSelecionados.add(gC); }); }
+                    }
+                    salvarEstado(); atualizarMenuFlutuante(); atualizarDpadVisibility();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Inicia o gesto de pinça (2 dedos) para zoom, cancelando qualquer arraste/pan em andamento
+        // que possa ter sido iniciado pelo primeiro dedo antes do segundo tocar a tela.
+        function iniciarPinch() {
+            isPanning = false; arrastandoGrupo = false; isResizing = false; resizeTarget = null; handleArrasteFio = null; nóArrastado = null;
+            if (desenhandoFio && fioAtual) { let idx = fios.indexOf(fioAtual); if (idx > -1) fios.splice(idx, 1); desenhandoFio = false; fioAtual = null; terminalAtivo = null; atualizarDpadVisibility(); }
+            fecharMenuFio();
+            let pts = [...activePointers.values()];
+            pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+            pinchStartZoom = camera.zoom;
+            let midX = (pts[0].x + pts[1].x) / 2, midY = (pts[0].y + pts[1].y) / 2;
+            pinchAnchorWorld = toWorld(midX, midY);
+            isPinching = true;
+            atualizarMenuFlutuante(); atualizarTela();
+        }
+
+        canvas.addEventListener('gesturestart', (e) => { e.preventDefault(); });
+
         canvas.addEventListener('pointerdown', (e) => {
             if (isModalOpen()) return;
             if(e.target.closest('#dpadControls') || e.target.closest('.bottom-dock') || e.target.closest('.zoom-dock')) return;
-            canvas.setPointerCapture(e.pointerId); const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y;
+            canvas.setPointerCapture(e.pointerId);
+            activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+            if (activePointers.size === 2) { iniciarPinch(); return; }
+            if (activePointers.size > 2) { return; }
+
+            const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y;
 
             if (ferramentaAtual === 'alicate') { 
                 let hit = obterFioProximoPath2D(wx, wy); 
@@ -1447,14 +1547,17 @@
                     
                     fios.splice(fios.indexOf(f), 1); fios.push(f1, f2); 
                     if(fioManipulado === f) fioManipulado = null; atualizarTela(); triggerAutoSave();
-                } 
+                } else { 
+                    tentarSelecionarEArrastarComponente(wx, wy, e); atualizarTela();
+                }
                 return; 
             }
-            if (ferramentaAtual === 'entortar') { fecharMenuFio(); for(let f of fios) for(let i=0; i<f.pontos.length; i++) if(Math.hypot(wx - f.pontos[i].x, wy - f.pontos[i].y) < 25/camera.zoom) { salvarEstado(); nóArrastado = f.pontos[i]; return; } let hit = obterFioProximoPath2D(wx, wy); if (hit) { salvarEstado(); let novoNo = {x: wx, y: wy}; hit.fio.pontos.splice(hit.segIndex, 0, novoNo); nóArrastado = novoNo; } atualizarTela(); return; }
+            if (ferramentaAtual === 'entortar') { fecharMenuFio(); for(let f of fios) for(let i=0; i<f.pontos.length; i++) if(Math.hypot(wx - f.pontos[i].x, wy - f.pontos[i].y) < 25/camera.zoom) { salvarEstado(); nóArrastado = f.pontos[i]; return; } let hit = obterFioProximoPath2D(wx, wy); if (hit) { salvarEstado(); let novoNo = {x: wx, y: wy}; hit.fio.pontos.splice(hit.segIndex, 0, novoNo); nóArrastado = novoNo; } else { tentarSelecionarEArrastarComponente(wx, wy, e); } atualizarTela(); return; }
             if (ferramentaAtual === 'fio') { 
                 if (terminalAtivo) { let tx = terminalAtivo.c.x + terminalAtivo.t.x; let ty = terminalAtivo.c.y + terminalAtivo.t.y; if (Math.hypot(wx - tx, wy - ty) < 40/camera.zoom) { terminalAtivo.sx = wx; terminalAtivo.sy = wy; return; } else { terminalAtivo = null; atualizarDpadVisibility(); } }
                 for (let c of componentes) { for (let t of c.terminais) { if (Math.hypot(wx - (c.x + t.x), wy - (c.y + t.y)) < 30/camera.zoom) { terminalAtivo = {c: c, t: t, sx: wx, sy: wy}; atualizarDpadVisibility(); atualizarTela(); return; } } } 
                 let hit = obterFioProximoPath2D(wx, wy); if (hit && hit.fio.tipoLinha === 'conduite') { salvarEstado(); desenhandoFio = true; fecharMenuFio(); fioManipulado = null; componentesSelecionados.clear(); atualizarMenuFlutuante(); fioAtual = new Fio(null, null, hit.pt.x, hit.pt.y, document.getElementById('corFio').value, 'fio'); fioAtual.pontos.push({x: hit.pt.x, y: hit.pt.y}); fios.push(fioAtual); }
+                else if (!hit) { tentarSelecionarEArrastarComponente(wx, wy, e); }
                 atualizarTela(); return; 
             }
             if (ferramentaAtual === 'mover') {
@@ -1491,6 +1594,21 @@
 
         canvas.addEventListener('pointermove', (e) => { 
             if (isModalOpen()) return;
+            if (activePointers.has(e.pointerId)) activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+            if (isPinching && activePointers.size >= 2) {
+                let pts = [...activePointers.values()];
+                let dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+                let novoZoom = Math.max(0.2, Math.min(4, pinchStartZoom * (dist / pinchStartDist)));
+                let midX = (pts[0].x + pts[1].x) / 2, midY = (pts[0].y + pts[1].y) / 2;
+                camera.zoom = novoZoom;
+                camera.x = midX - pinchAnchorWorld.x * camera.zoom;
+                camera.y = midY - pinchAnchorWorld.y * camera.zoom;
+                atualizarMenuFlutuante(); atualizarTela();
+                return;
+            }
+            if (activePointers.size >= 2) return;
+
             const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y; 
             if(isPanning) { camera.x += e.clientX - panStartX; camera.y += e.clientY - panStartY; panStartX = e.clientX; panStartY = e.clientY; atualizarMenuFlutuante(); atualizarTela(); return; } 
             
@@ -1520,12 +1638,16 @@
 
             if (desenhandoFio && fioAtual) { fioAtual.endX = wx; fioAtual.endY = wy; atualizarTela(); } 
             else if (nóArrastado && ferramentaAtual === 'entortar') { nóArrastado.x = wx; nóArrastado.y = wy; atualizarTela(); } 
-            else if (arrastandoGrupo && ferramentaAtual === 'mover') { let dx = wx - dragOffsetX; let dy = wy - dragOffsetY; componentesSelecionados.forEach(c => { if(!c.locked){ c.x += dx; c.y += dy; } }); dragOffsetX = wx; dragOffsetY = wy; atualizarMenuFlutuante(); atualizarTela(); } 
+            else if (arrastandoGrupo) { let dx = wx - dragOffsetX; let dy = wy - dragOffsetY; componentesSelecionados.forEach(c => { if(!c.locked){ c.x += dx; c.y += dy; } }); dragOffsetX = wx; dragOffsetY = wy; atualizarMenuFlutuante(); atualizarTela(); } 
         });
 
         canvas.addEventListener('pointerup', (e) => {
             if (isModalOpen()) return;
-            canvas.releasePointerCapture(e.pointerId); const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y;
+            canvas.releasePointerCapture(e.pointerId);
+            activePointers.delete(e.pointerId);
+            if (isPinching) { if (activePointers.size < 2) { isPinching = false; triggerAutoSave(); } return; }
+
+            const wx = toWorld(e.clientX, e.clientY).x; const wy = toWorld(e.clientX, e.clientY).y;
             if (isResizing) { isResizing = false; resizeTarget = null; atualizarMenuFlutuante(); atualizarTela(); triggerAutoSave(); return; }
             if(isPanning) { isPanning = false; triggerAutoSave(); return; } if(handleArrasteFio) { handleArrasteFio = null; atualizarTela(); triggerAutoSave(); return; }
             
@@ -1539,6 +1661,12 @@
             }
             if (arrastandoGrupo) { componentesSelecionados.forEach(c => { if(!c.locked){ c.x = Math.round(c.x / 12) * 12; c.y = Math.round(c.y / 12) * 12; } }); atualizarMenuFlutuante(); } arrastandoGrupo = false; nóArrastado = null; atualizarTela();
             triggerAutoSave();
+        });
+
+        canvas.addEventListener('pointercancel', (e) => {
+            activePointers.delete(e.pointerId);
+            if (activePointers.size < 2) isPinching = false;
+            isPanning = false; arrastandoGrupo = false; isResizing = false; resizeTarget = null; handleArrasteFio = null; nóArrastado = null;
         });
 
         canvas.addEventListener('dblclick', (e) => { 
